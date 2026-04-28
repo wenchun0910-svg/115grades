@@ -214,10 +214,37 @@
                     </div>
                 </div>
 
+                <!-- 新增：學生基本資料管理 -->
+                <div class="bg-[#FCFBFA] p-6 rounded border border-[var(--wafu-border)]">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-bold text-lg serif-font border-l-4 pl-3" style="border-color: var(--wafu-primary);">
+                            <i class="fas fa-user-edit mr-2 text-sm"></i>2. 學生基本資料管理
+                        </h3>
+                        <button type="button" onclick="openStudentModal()" class="text-sm btn-wafu px-3 py-1 tracking-widest rounded-sm">
+                            <i class="fas fa-plus mr-1"></i>新增學生
+                        </button>
+                    </div>
+                    <div class="overflow-y-auto max-h-60 border border-[var(--wafu-border)] rounded-sm no-scrollbar">
+                        <table class="min-w-full divide-y divide-[var(--wafu-border)] text-sm">
+                            <thead class="bg-[#F5F4F0] sticky top-0 shadow-sm z-10">
+                                <tr>
+                                    <th class="px-4 py-2 text-left font-medium text-gray-600 tracking-wider">密碼(帳號)</th>
+                                    <th class="px-4 py-2 text-left font-medium text-gray-600 tracking-wider">座號</th>
+                                    <th class="px-4 py-2 text-left font-medium text-gray-600 tracking-wider">姓名</th>
+                                    <th class="px-4 py-2 text-center font-medium text-gray-600 tracking-wider">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminStudentList" class="divide-y divide-[var(--wafu-border)] bg-white">
+                                <tr><td colspan="4" class="text-center py-4 text-gray-500">載入中...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
                 <!-- 匯入成績功能 -->
                 <div class="bg-[#FCFBFA] p-6 rounded border border-[var(--wafu-border)]">
                     <h3 class="font-bold text-lg mb-4 serif-font border-l-4 pl-3" style="border-color: var(--wafu-primary);">
-                        <i class="fas fa-file-import mr-2 text-sm"></i>2. 匯入評量成績 (CSV)
+                        <i class="fas fa-file-import mr-2 text-sm"></i>3. 匯入評量成績 (CSV)
                     </h3>
                     <div class="space-y-4">
                         <div>
@@ -305,6 +332,40 @@
         </div>
     </div>
 
+    <!-- 學生資料編輯視窗 (Modal) -->
+    <div id="studentEditModal" class="fixed inset-0 z-[100] hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="fixed inset-0 bg-[#3E3A39] bg-opacity-40 backdrop-blur-sm transition-opacity" onclick="closeStudentModal()"></div>
+        <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
+            <div class="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
+                <div class="relative transform overflow-hidden rounded-sm bg-[#FCFBFA] text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-sm fade-in border border-[var(--wafu-border)]">
+                    <div class="px-4 pb-4 pt-5 sm:p-6 sm:pb-4 border-b border-[var(--wafu-border)]">
+                        <h3 class="text-xl font-bold leading-6 text-[var(--wafu-text)] serif-font text-center" id="studentModalTitle">編輯學生資料</h3>
+                    </div>
+                    <div class="px-6 py-4 space-y-4">
+                        <input type="hidden" id="editStudentOriginalPwd">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">密碼 (登入用)*</label>
+                            <input type="text" id="editStudentPwd" class="w-full px-3 py-2 wafu-input" required>
+                            <p class="text-[11px] text-[var(--wafu-accent)] mt-1 tracking-wide">注意：修改密碼會導致該生無法查詢舊成績</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">座號</label>
+                            <input type="text" id="editStudentSeat" class="w-full px-3 py-2 wafu-input">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">姓名</label>
+                            <input type="text" id="editStudentName" class="w-full px-3 py-2 wafu-input">
+                        </div>
+                    </div>
+                    <div class="bg-[#F5F4F0] px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+                        <button type="button" onclick="saveStudent()" id="saveStudentBtn" class="w-full inline-flex justify-center rounded-sm bg-[var(--wafu-primary)] px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-[var(--wafu-primary-hover)] sm:ml-3 sm:w-auto tracking-widest transition-colors">儲 存</button>
+                        <button type="button" onclick="closeStudentModal()" class="mt-3 w-full inline-flex justify-center rounded-sm bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm ring-1 ring-inset ring-[var(--wafu-border)] hover:bg-gray-50 sm:mt-0 sm:w-auto tracking-widest transition-colors">取 消</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Firebase 整合腳本 -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -323,7 +384,7 @@
         // ==========================================
         async function initSystem() {
             try {
-             const firebaseConfig = {
+               const firebaseConfig = {
   apiKey: "AIzaSyCOv3fRkben0ycq6hQJulwMhkbON8fxLxI",
   authDomain: "grades-2421f.firebaseapp.com",
   projectId: "grades-2421f",
@@ -397,6 +458,7 @@
                     document.getElementById('subtitle').textContent = '系統管理後台';
                     document.getElementById('adminSection').classList.remove('hidden');
                     await loadAssessmentsToDropdown('deleteAssessmentSelect');
+                    await window.loadAdminRoster(); // 載入學生名冊
                     showToast('管理員登入成功', 'success');
                 } else {
                     // 學生登入
@@ -556,6 +618,7 @@
                 const students = data.map(d => ({ ...d, '密碼': String(d['密碼']) }));
                 await setDoc(rosterRef(), { students });
                 
+                await window.loadAdminRoster(); // 更新學生名冊列表
                 showToast('學生名冊匯入成功！', 'success');
                 fileInput.value = '';
             } catch (error) {
@@ -702,6 +765,128 @@
         };
 
         window.closeStatsModal = () => document.getElementById('statsModal').classList.add('hidden');
+
+        // ==========================================
+        // 6. 學生基本資料管理邏輯
+        // ==========================================
+        let adminRosterCache = [];
+
+        window.loadAdminRoster = async () => {
+            try {
+                const rSnap = await getDoc(rosterRef());
+                adminRosterCache = rSnap.exists() ? (rSnap.data().students || []) : [];
+                window.renderAdminRoster();
+            } catch(e) {
+                console.error("載入名冊失敗", e);
+            }
+        };
+
+        window.renderAdminRoster = () => {
+            const tbody = document.getElementById('adminStudentList');
+            tbody.innerHTML = '';
+            if(adminRosterCache.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-500">尚無學生資料</td></tr>';
+                return;
+            }
+            adminRosterCache.forEach((s, idx) => {
+                const pwd = s['密碼'] || s.password;
+                const seat = s['座號'] || s.seat || '';
+                const name = s['姓名'] || s.name || '';
+                
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-[#FDFDFC] transition-colors';
+                tr.innerHTML = `
+                    <td class="px-4 py-2 text-gray-800">${pwd}</td>
+                    <td class="px-4 py-2 text-gray-600">${seat}</td>
+                    <td class="px-4 py-2 text-gray-800">${name}</td>
+                    <td class="px-4 py-2 text-center whitespace-nowrap">
+                        <button onclick="window.openStudentModal(${idx})" class="text-blue-500 hover:text-blue-700 mr-3" title="編輯"><i class="fas fa-edit"></i></button>
+                        <button onclick="window.deleteStudent(${idx})" class="text-[var(--wafu-accent)] hover:opacity-70" title="刪除"><i class="fas fa-trash-alt"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        };
+
+        window.openStudentModal = (index = -1) => {
+            const title = document.getElementById('studentModalTitle');
+            if (index >= 0) {
+                title.textContent = '編輯學生資料';
+                const s = adminRosterCache[index];
+                document.getElementById('editStudentOriginalPwd').value = s['密碼'] || s.password;
+                document.getElementById('editStudentPwd').value = s['密碼'] || s.password;
+                document.getElementById('editStudentSeat').value = s['座號'] || s.seat || '';
+                document.getElementById('editStudentName').value = s['姓名'] || s.name || '';
+            } else {
+                title.textContent = '新增學生資料';
+                document.getElementById('editStudentOriginalPwd').value = '';
+                document.getElementById('editStudentPwd').value = '';
+                document.getElementById('editStudentSeat').value = '';
+                document.getElementById('editStudentName').value = '';
+            }
+            document.getElementById('studentEditModal').classList.remove('hidden');
+        };
+
+        window.closeStudentModal = () => document.getElementById('studentEditModal').classList.add('hidden');
+
+        window.saveStudent = async () => {
+            const origPwd = document.getElementById('editStudentOriginalPwd').value;
+            const newPwd = document.getElementById('editStudentPwd').value.trim();
+            const newSeat = document.getElementById('editStudentSeat').value.trim();
+            const newName = document.getElementById('editStudentName').value.trim();
+
+            if (!newPwd) return showToast('密碼為必填項目', 'warning');
+
+            // 檢查是否有重複密碼
+            if (origPwd !== newPwd) {
+                const exists = adminRosterCache.find(s => (s['密碼'] || s.password) === newPwd);
+                if (exists) return showToast('此密碼已被使用', 'error');
+            }
+
+            const btn = document.getElementById('saveStudentBtn');
+            const ogText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = '處理中...';
+
+            try {
+                let updatedRoster = [...adminRosterCache];
+                if (origPwd) { 
+                    // 編輯模式
+                    const idx = updatedRoster.findIndex(s => (s['密碼'] || s.password) === origPwd);
+                    if (idx !== -1) updatedRoster[idx] = { '密碼': newPwd, '座號': newSeat, '姓名': newName };
+                } else { 
+                    // 新增模式
+                    updatedRoster.push({ '密碼': newPwd, '座號': newSeat, '姓名': newName });
+                }
+
+                await setDoc(rosterRef(), { students: updatedRoster });
+                adminRosterCache = updatedRoster;
+                window.renderAdminRoster();
+                window.closeStudentModal();
+                showToast('學生資料儲存成功', 'success');
+            } catch(e) {
+                showToast('儲存失敗', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = ogText;
+            }
+        };
+
+        window.deleteStudent = async (index) => {
+            const s = adminRosterCache[index];
+            const name = s['姓名'] || s.name || s['密碼'];
+            if (!confirm(`確定要刪除學生「${name}」嗎？`)) return;
+
+            try {
+                const updatedRoster = adminRosterCache.filter((_, i) => i !== index);
+                await setDoc(rosterRef(), { students: updatedRoster });
+                adminRosterCache = updatedRoster;
+                window.renderAdminRoster();
+                showToast('已刪除學生資料', 'success');
+            } catch(e) {
+                showToast('刪除失敗', 'error');
+            }
+        };
 
         function toggleBtn(btnId, textId, spinnerId, isLoading, loadingText) {
             const btn = document.getElementById(btnId);
