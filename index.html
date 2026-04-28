@@ -323,7 +323,14 @@
         // ==========================================
         async function initSystem() {
             try {
-                const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+             const firebaseConfig = {
+  apiKey: "AIzaSyCOv3fRkben0ycq6hQJulwMhkbON8fxLxI",
+  authDomain: "grades-2421f.firebaseapp.com",
+  projectId: "grades-2421f",
+  storageBucket: "grades-2421f.firebasestorage.app",
+  messagingSenderId: "952321148582",
+  appId: "1:952321148582:web:f932a627c0bd24a440d667"
+};
                 appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
                 const app = initializeApp(firebaseConfig);
                 auth = getAuth(app);
