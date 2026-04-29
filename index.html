@@ -465,28 +465,27 @@
         let currentStats = null; 
 
         // ==========================================
-        // 1. 初始化 Firebase (加上強效錯誤捕捉)
+        // 1. 初始化 Firebase (防呆修復版)
         // ==========================================
         async function initSystem() {
             try {
-                let firebaseConfig;
-                if (typeof __firebase_config !== 'undefined') {
-                    firebaseConfig = JSON.parse(__firebase_config);
-                } else {
-                    // ⚠️【請將下方的字串替換為您從 Firebase 後台取得的金鑰】
-const firebaseConfig = {
-  apiKey: "AIzaSyCOv3fRkben0ycq6hQJulwMhkbON8fxLxI",
+                // ⚠️【請將下方的字串替換為您從 Firebase 後台取得的金鑰】
+                // 💡 提醒：請只複製大括號 { ... } 裡面的內容，不要連 const firebaseConfig = 也一起複製！
+                const myConfig = {
+                    apiKey: "AIzaSyCOv3fRkben0ycq6hQJulwMhkbON8fxLxI",
   authDomain: "grades-2421f.firebaseapp.com",
   projectId: "grades-2421f",
   storageBucket: "grades-2421f.firebasestorage.app",
   messagingSenderId: "952321148582",
   appId: "1:952321148582:web:f932a627c0bd24a440d667"
-};
 
-                }
+                };
 
+                // 優先抓取環境預覽變數，沒有的話就使用您填寫的 myConfig
+                let activeConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : myConfig;
                 appId = typeof __app_id !== 'undefined' ? __app_id : 'my-school-grades';
-                const app = initializeApp(firebaseConfig);
+                
+                const app = initializeApp(activeConfig);
                 auth = getAuth(app);
                 db = getFirestore(app);
 
@@ -502,20 +501,21 @@ const firebaseConfig = {
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     await signInWithCustomToken(auth, __initial_auth_token);
                 } else {
+                    // ⚠️【重要提醒】如果在自己的網頁上執行，必須在 Firebase Console 打開「匿名登入 (Anonymous)」
                     await signInAnonymously(auth);
                 }
             } catch (error) {
                 console.error("Firebase 初始化失敗:", error);
                 
-                // 💡 如果連線失敗，在畫面上印出具體的錯誤原因，方便 debug
                 let errorMsg = error.message || "未知錯誤";
                 document.getElementById('subtitle').innerHTML = `
-                    <span class="text-red-500 font-bold block mb-2">資料庫連線失敗：${errorMsg}</span>
-                    <span class="text-xs text-gray-500">
-                        【常見原因檢查】<br>
+                    <span class="text-red-500 font-bold block mb-2 text-sm sm:text-base">資料庫連線失敗：${errorMsg}</span>
+                    <div class="text-xs text-gray-500 text-left bg-white p-4 rounded border border-red-200 inline-block">
+                        【修復清單檢查】<br>
                         1. 是否已在 Firebase Console 中啟用「Authentication > 匿名登入 (Anonymous)」？<br>
-                        2. 程式碼 440 行的 firebaseConfig 金鑰是否填寫正確且沒有漏掉雙引號？
-                    </span>
+                        2. 第 464 行的 firebaseConfig 金鑰是否填寫正確？<br>
+                        3. <span class="text-red-500 font-bold">請確認沒有複製到 "const firebaseConfig =" 這段字！</span>
+                    </div>
                 `;
             }
         }
