@@ -417,7 +417,7 @@
         // ==========================================
         async function initSystem() {
             try {
-                      const firebaseConfig = {
+                        const firebaseConfig = {
   apiKey: "AIzaSyCOv3fRkben0ycq6hQJulwMhkbON8fxLxI",
   authDomain: "grades-2421f.firebaseapp.com",
   projectId: "grades-2421f",
@@ -778,6 +778,137 @@
                 showToast('修改名稱失敗', 'error');
             } finally {
                 toggleBtn('saveRenameBtn', 'saveRenameBtnText', 'saveRenameSpinner', false, '儲 存');
+            }
+        };
+
+        // ==========================================
+        // 7. 編輯評量細項 (刪除欄/列)
+        // ==========================================
+        let editingAssessmentData = [];
+        let editingAssessmentKeys = [];
+
+        window.openEditAssessmentModal = async () => {
+            const name = document.getElementById('manageAssessmentSelect').value;
+            if (!name) return showToast('請先選擇要編輯的評量', 'warning');
+            
+            document.getElementById('editAssessmentName').value = name;
+            document.getElementById('editModalTitle').textContent = `編輯：${name}`;
+            
+            const originalBtnText = document.getElementById('deleteBtnText').innerHTML;
+            toggleBtn('deleteBtn', 'deleteBtnText', 'deleteSpinner', true, '讀取中...');
+            
+            try {
+                const snap = await getDoc(assessmentRef(name));
+                if (!snap.exists()) throw new Error('資料不存在');
+                
+                // 深拷貝資料以供編輯
+                editingAssessmentData = JSON.parse(JSON.stringify(snap.data().records || []));
+                
+                if (editingAssessmentData.length > 0) {
+                     let keysSet = new Set();
+                     editingAssessmentData.forEach(r => Object.keys(r).forEach(k => keysSet.add(k)));
+                     editingAssessmentKeys = Array.from(keysSet);
+                     
+                     // 確保「密碼」永遠固定在第一欄
+                     const pwdIdx = editingAssessmentKeys.indexOf('密碼');
+                     if (pwdIdx > -1) {
+                         editingAssessmentKeys.splice(pwdIdx, 1);
+                         editingAssessmentKeys.unshift('密碼');
+                     }
+                } else {
+                     editingAssessmentKeys = ['密碼'];
+                }
+                
+                window.renderAssessmentEditor();
+                document.getElementById('editAssessmentModal').classList.remove('hidden');
+            } catch (error) {
+                showToast('讀取資料失敗', 'error');
+            } finally {
+                toggleBtn('deleteBtn', 'deleteBtnText', 'deleteSpinner', false, '');
+                document.getElementById('deleteBtnText').innerHTML = originalBtnText; // 恢復按鈕文字
+            }
+        };
+
+        window.renderAssessmentEditor = () => {
+            const thead = document.getElementById('editAssessmentThead');
+            const tbody = document.getElementById('editAssessmentTbody');
+            
+            // 繪製表頭 (包含刪除科目按鈕)
+            let thHtml = '<tr>';
+            editingAssessmentKeys.forEach((key) => {
+                if (key !== '密碼' && key !== '姓名' && key !== '座號' && key !== '總分' && key !== '平均') {
+                     thHtml += `<th class="px-3 py-3 text-center font-bold text-gray-700 whitespace-nowrap bg-[#E8E6E1] border-r border-[var(--wafu-border)]">
+                                  <div class="flex items-center justify-between space-x-3">
+                                      <span>${key}</span>
+                                      <button onclick="window.deleteAssessmentColumn('${key}')" class="text-[var(--wafu-accent)] hover:opacity-70 transition-opacity" title="刪除此科目所有成績"><i class="fas fa-times-circle"></i></button>
+                                  </div>
+                                </th>`;
+                } else {
+                     thHtml += `<th class="px-3 py-3 text-center font-bold text-gray-700 whitespace-nowrap bg-[#F5F4F0] border-r border-[var(--wafu-border)]">${key}</th>`;
+                }
+            });
+            thHtml += `<th class="px-3 py-3 text-center font-bold text-[var(--wafu-accent)] bg-[#F5F4F0]">操作</th></tr>`;
+            thead.innerHTML = thHtml;
+            
+            // 繪製內容 (包含刪除該生紀錄按鈕)
+            tbody.innerHTML = '';
+            if (editingAssessmentData.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="${editingAssessmentKeys.length + 1}" class="text-center py-6 text-gray-500">尚無成績資料</td></tr>`;
+                return;
+            }
+            
+            editingAssessmentData.forEach((row, rowIndex) => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-[#FDFDFC] transition-colors';
+                let tdHtml = '';
+                editingAssessmentKeys.forEach(key => {
+                     let cellVal = row[key] !== undefined ? row[key] : '';
+                     tdHtml += `<td class="px-3 py-3 text-center text-gray-800 whitespace-nowrap border-r border-[var(--wafu-border)]">${cellVal}</td>`;
+                });
+                tdHtml += `<td class="px-3 py-3 text-center whitespace-nowrap">
+                             <button onclick="window.deleteAssessmentRow(${rowIndex})" class="text-[var(--wafu-accent)] hover:opacity-70 px-2 py-1 rounded border border-[var(--wafu-accent)] text-xs transition-colors" title="刪除此學生紀錄"><i class="fas fa-trash-alt mr-1"></i>刪除列</button>
+                           </td>`;
+                tr.innerHTML = tdHtml;
+                tbody.appendChild(tr);
+            });
+        };
+
+        window.deleteAssessmentColumn = (colKey) => {
+            if(!confirm(`⚠️ 確定要刪除「${colKey}」這個科目的所有成績嗎？\n(刪除後需按下右下方的「儲存變更」才會永久生效)`)) return;
+            editingAssessmentKeys = editingAssessmentKeys.filter(k => k !== colKey);
+            editingAssessmentData.forEach(row => { delete row[colKey]; });
+            window.renderAssessmentEditor();
+        };
+
+        window.deleteAssessmentRow = (rowIndex) => {
+            const pwd = editingAssessmentData[rowIndex]['密碼'] || '此學生';
+            if(!confirm(`確定要從這次評量中刪除「密碼: ${pwd}」的成績紀錄嗎？`)) return;
+            editingAssessmentData.splice(rowIndex, 1);
+            window.renderAssessmentEditor();
+        };
+
+        window.closeEditAssessmentModal = () => {
+            document.getElementById('editAssessmentModal').classList.add('hidden');
+        };
+
+        window.saveEditedAssessment = async () => {
+            const name = document.getElementById('editAssessmentName').value;
+            toggleBtn('saveEditedBtn', 'saveEditedBtnText', 'saveEditedSpinner', true, '儲存中...');
+            
+            try {
+                const snap = await getDoc(assessmentRef(name));
+                let docData = snap.exists() ? snap.data() : {};
+                
+                docData.records = editingAssessmentData;
+                docData.updatedAt = Date.now(); 
+                
+                await setDoc(assessmentRef(name), docData);
+                showToast('評量成績明細已成功更新！', 'success');
+                window.closeEditAssessmentModal();
+            } catch (error) {
+                showToast('儲存失敗', 'error');
+            } finally {
+                toggleBtn('saveEditedBtn', 'saveEditedBtnText', 'saveEditedSpinner', false, '儲 存 變 更');
             }
         };
 
