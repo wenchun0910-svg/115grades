@@ -10,18 +10,19 @@
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@400;600;700&display=swap');
         
         :root {
-            --wafu-bg: #F5F4F0;      
-            --wafu-text: #3E3A39;    
-            --wafu-primary: #78866B; 
-            --wafu-primary-hover: #5A664F; 
-            --wafu-accent: #B48178;  
-            --wafu-border: #DCD6CD;  
+            --wafu-bg: #F4F6F9;      /* 月白 (帶有微微水藍的瓷白背景) */
+            --wafu-text: #222C37;    /* 玄青 (深邃的墨藍色字體，如徽墨) */
+            --wafu-primary: #1D5A96; /* 青花藍/景泰藍 (純粹的中式瓷器藍) */
+            --wafu-primary-hover: #14406B; /* 藏青 (更深的靛藍色 Hover 狀態) */
+            --wafu-accent: #C04851;  /* 胭脂/硃砂 (經典的中式傳統紅，用於印章與警告) */
+            --wafu-border: #C8D4E0;  /* 雲水藍 (淡藍灰邊框) */
         }
 
         body {
             font-family: 'Noto Sans TC', sans-serif;
             background-color: var(--wafu-bg);
             color: var(--wafu-text);
+            /* 輕微的宣紙紋理質感 */
             background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23noise)' opacity='0.05'/%3E%3C/svg%3E");
         }
 
@@ -79,7 +80,7 @@
             right: 20px;
             width: 40px;
             height: 40px;
-            border: 2px solid var(--wafu-accent);
+            border: 2px solid var(--wafu-accent); /* 中式印章使用硃砂紅 */
             border-radius: 4px;
             color: var(--wafu-accent);
             display: flex;
@@ -90,7 +91,7 @@
             font-size: 14px;
             line-height: 1.1;
             writing-mode: vertical-rl;
-            opacity: 0.6;
+            opacity: 0.85; /* 提高透明度讓印泥更顯色 */
             pointer-events: none;
         }
         
@@ -103,7 +104,8 @@
         .wafu-input:focus {
             outline: none;
             border-color: var(--wafu-primary);
-            box-shadow: 0 0 0 2px rgba(120, 134, 107, 0.2);
+            /* 配合青花藍的 Focus 光暈 */
+            box-shadow: 0 0 0 2px rgba(29, 90, 150, 0.2);
         }
     </style>
 </head>
