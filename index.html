@@ -241,7 +241,7 @@
                     </div>
                 </div>
 
-                <!-- 3. 匯入評量成績 (下拉選單完美修復版) -->
+                <!-- 3. 匯入評量成績 -->
                 <div class="bg-[#FCFBFA] p-6 rounded border border-[var(--wafu-border)]">
                     <h3 class="font-bold text-lg mb-4 serif-font border-l-4 pl-3" style="border-color: var(--wafu-primary);">
                         <i class="fas fa-file-import mr-2 text-sm"></i>3. 匯入評量成績 (CSV)
@@ -269,7 +269,7 @@
                     </div>
                 </div>
 
-                <!-- 4. 評量紀錄管理 (修復UI錯亂問題) -->
+                <!-- 4. 評量紀錄管理 -->
                 <div class="bg-[#FCFBFA] p-6 rounded border border-[var(--wafu-border)]">
                     <h3 class="font-bold text-lg mb-4 serif-font border-l-4 pl-3" style="border-color: var(--wafu-accent);">
                         <i class="fas fa-tasks mr-2 text-sm"></i>4. 評量紀錄管理 (編輯 / 改名 / 刪除)
@@ -296,7 +296,7 @@
                     </div>
                 </div>
 
-                <!-- 5. 修改管理員密碼 (修復UI錯亂問題) -->
+                <!-- 5. 修改管理員密碼 -->
                 <div class="bg-[#FCFBFA] p-6 rounded border border-[var(--wafu-border)]">
                     <h3 class="font-bold text-lg mb-4 serif-font border-l-4 pl-3" style="border-color: #A9A9A9;">
                         <i class="fas fa-user-lock mr-2 text-sm"></i>5. 修改管理員密碼
@@ -465,16 +465,15 @@
         let currentStats = null; 
 
         // ==========================================
-        // 1. 初始化 Firebase (解決部署到外部網站的連線問題)
+        // 1. 初始化 Firebase (加上強效錯誤捕捉)
         // ==========================================
         async function initSystem() {
             try {
                 let firebaseConfig;
-                // 判斷是否在預覽環境，若不是，請替換為您的 Firebase Config
                 if (typeof __firebase_config !== 'undefined') {
                     firebaseConfig = JSON.parse(__firebase_config);
                 } else {
-                    // ⚠️【重要】：若要放到 GitHub Pages，請在此貼上您的 Firebase Web API 金鑰
+                    // ⚠️【請將下方的字串替換為您從 Firebase 後台取得的金鑰】
                           const firebaseConfig = {
   apiKey: "AIzaSyCOv3fRkben0ycq6hQJulwMhkbON8fxLxI",
   authDomain: "grades-2421f.firebaseapp.com",
@@ -484,7 +483,7 @@
   appId: "1:952321148582:web:f932a627c0bd24a440d667"
 };
 
-                
+                }
 
                 appId = typeof __app_id !== 'undefined' ? __app_id : 'my-school-grades';
                 const app = initializeApp(firebaseConfig);
@@ -503,12 +502,21 @@
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     await signInWithCustomToken(auth, __initial_auth_token);
                 } else {
-                    // ⚠️【重要】：需在 Firebase Console > Authentication 開啟「匿名登入 (Anonymous)」
                     await signInAnonymously(auth);
                 }
             } catch (error) {
                 console.error("Firebase 初始化失敗:", error);
-                document.getElementById('subtitle').textContent = '資料庫連線失敗，請確認 Firebase 設定檔是否正確填寫。';
+                
+                // 💡 如果連線失敗，在畫面上印出具體的錯誤原因，方便 debug
+                let errorMsg = error.message || "未知錯誤";
+                document.getElementById('subtitle').innerHTML = `
+                    <span class="text-red-500 font-bold block mb-2">資料庫連線失敗：${errorMsg}</span>
+                    <span class="text-xs text-gray-500">
+                        【常見原因檢查】<br>
+                        1. 是否已在 Firebase Console 中啟用「Authentication > 匿名登入 (Anonymous)」？<br>
+                        2. 程式碼 440 行的 firebaseConfig 金鑰是否填寫正確且沒有漏掉雙引號？
+                    </span>
+                `;
             }
         }
 
@@ -581,7 +589,7 @@
         });
 
         // ==========================================
-        // 3. 處理下拉選單 (傳統 Select + Input)
+        // 3. 處理下拉選單
         // ==========================================
         async function loadAssessmentsToDropdown(...selectIds) {
             const snapshot = await getDocs(assessmentsCol());
