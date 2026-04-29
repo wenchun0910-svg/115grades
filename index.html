@@ -471,7 +471,7 @@
             try {
                 // ⚠️【請將下方的字串替換為您從 Firebase 後台取得的金鑰】
                 const myConfig = {
-                  apiKey: "AIzaSyCOv3fRkben0ycq6hQJulwMhkbON8fxLxI",
+                   apiKey: "AIzaSyCOv3fRkben0ycq6hQJulwMhkbON8fxLxI",
   authDomain: "grades-2421f.firebaseapp.com",
   projectId: "grades-2421f",
   storageBucket: "grades-2421f.firebasestorage.app",
@@ -883,9 +883,9 @@
                      subjects.sort((a, b) => {
                          const matchA = a.match(/\d+/);
                          const matchB = b.match(/\d+/);
-                         const numA = matchA ? parseInt(matchA[0], 10) : -1;
-                         const numB = matchB ? parseInt(matchB[0], 10) : -1;
-                         if (numA !== numB) return numB - numA;
+                         const numA = matchA ? parseInt(matchA[0], 10) : 99999;
+                         const numB = matchB ? parseInt(matchB[0], 10) : 99999;
+                         if (numA !== numB) return numA - numB; // 遞增排序 (小到大)
                          return a.localeCompare(b);
                      });
                      
