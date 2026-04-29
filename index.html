@@ -3,19 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>學生成績查詢系統</title>
+    <title>平時成績查詢</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@400;600;700&display=swap');
         
         :root {
-            --wafu-bg: #F5F4F0;      /* 和紙白 */
-            --wafu-text: #3E3A39;    /* 墨色 */
-            --wafu-primary: #78866B; /* 鶯茶 (抹茶綠) */
+            --wafu-bg: #F5F4F0;      
+            --wafu-text: #3E3A39;    
+            --wafu-primary: #78866B; 
             --wafu-primary-hover: #5A664F; 
-            --wafu-accent: #B48178;  /* 鴇色 (淺褐紅) */
-            --wafu-border: #DCD6CD;  /* 淺灰 */
+            --wafu-accent: #B48178;  
+            --wafu-border: #DCD6CD;  
         }
 
         body {
@@ -199,7 +199,7 @@
                     </button>
                 </div>
 
-                <!-- 匯入學生名冊 -->
+                <!-- 1. 匯入學生名冊 -->
                 <div class="bg-[#FCFBFA] p-6 rounded border border-[var(--wafu-border)]">
                     <h3 class="font-bold text-lg mb-4 serif-font border-l-4 pl-3" style="border-color: var(--wafu-primary);">
                         <i class="fas fa-users mr-2 text-sm"></i>1. 匯入學生名冊 (CSV)
@@ -214,7 +214,7 @@
                     </div>
                 </div>
 
-                <!-- 學生基本資料管理 -->
+                <!-- 2. 學生基本資料管理 -->
                 <div class="bg-[#FCFBFA] p-6 rounded border border-[var(--wafu-border)]">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="font-bold text-lg serif-font border-l-4 pl-3" style="border-color: var(--wafu-primary);">
@@ -241,19 +241,25 @@
                     </div>
                 </div>
 
-                <!-- 匯入成績功能 -->
+                <!-- 3. 匯入評量成績 (下拉選單完美修復版) -->
                 <div class="bg-[#FCFBFA] p-6 rounded border border-[var(--wafu-border)]">
                     <h3 class="font-bold text-lg mb-4 serif-font border-l-4 pl-3" style="border-color: var(--wafu-primary);">
                         <i class="fas fa-file-import mr-2 text-sm"></i>3. 匯入評量成績 (CSV)
                     </h3>
                     <div class="space-y-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">評量名稱 (輸入新名稱，或點擊從選單選擇)</label>
-                            <input type="text" id="importSheetName" list="existingAssessmentsList" class="w-full px-3 py-2 wafu-input" placeholder="可輸入新名稱或選擇現有項目">
-                            <datalist id="existingAssessmentsList"></datalist>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">評量名稱</label>
+                            <div class="relative">
+                                <select id="importSheetSelect" class="w-full px-3 py-2 wafu-input appearance-none mb-2" onchange="toggleNewSheetInput()">
+                                    <option value="" disabled selected>請選擇現有評量，或選擇下方新增...</option>
+                                    <option value="NEW_SHEET" class="font-bold text-[var(--wafu-primary)]">+ 新增評量名稱</option>
+                                </select>
+                                <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none pb-2"><i class="fas fa-angle-down text-gray-400"></i></div>
+                            </div>
+                            <input type="text" id="importSheetName" class="w-full px-3 py-2 wafu-input hidden" placeholder="請輸入全新的評量名稱">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">選擇 CSV 檔案 (第一列為標題，必須包含「密碼」與各科目)</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">選擇 CSV 檔案 (必須包含「密碼」與各科目)</label>
                             <input type="file" id="csvFile" accept=".csv" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-sm file:border-0 file:text-sm file:font-semibold file:bg-[#E8E6E1] file:text-[var(--wafu-text)] hover:file:bg-[#DCD6CD] transition-colors border border-[var(--wafu-border)] rounded-sm bg-white p-1">
                         </div>
                         <button type="button" id="importBtn" onclick="handleImportGrades()" class="w-full flex justify-center items-center py-3 btn-wafu tracking-wider">
@@ -263,15 +269,18 @@
                     </div>
                 </div>
 
-                <!-- 評量紀錄管理功能 (編輯/修改名稱/刪除) -->
+                <!-- 4. 評量紀錄管理 (修復UI錯亂問題) -->
                 <div class="bg-[#FCFBFA] p-6 rounded border border-[var(--wafu-border)]">
                     <h3 class="font-bold text-lg mb-4 serif-font border-l-4 pl-3" style="border-color: var(--wafu-accent);">
                         <i class="fas fa-tasks mr-2 text-sm"></i>4. 評量紀錄管理 (編輯 / 改名 / 刪除)
                     </h3>
                     <div class="space-y-4">
-                        <select id="manageAssessmentSelect" class="w-full px-3 py-2 wafu-input appearance-none">
-                            <option value="" disabled selected>載入中...</option>
-                        </select>
+                        <div class="relative">
+                            <select id="manageAssessmentSelect" class="w-full px-3 py-2 wafu-input appearance-none">
+                                <option value="" disabled selected>載入中...</option>
+                            </select>
+                            <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none"><i class="fas fa-angle-down text-gray-400"></i></div>
+                        </div>
                         <div class="flex flex-col sm:flex-row gap-3">
                             <button type="button" onclick="openEditAssessmentModal()" class="w-full sm:w-1/3 flex justify-center items-center py-3 btn-wafu tracking-wider text-sm">
                                 <i class="fas fa-table mr-2"></i>編輯明細
@@ -287,7 +296,7 @@
                     </div>
                 </div>
 
-                <!-- 修改密碼功能 -->
+                <!-- 5. 修改管理員密碼 (修復UI錯亂問題) -->
                 <div class="bg-[#FCFBFA] p-6 rounded border border-[var(--wafu-border)]">
                     <h3 class="font-bold text-lg mb-4 serif-font border-l-4 pl-3" style="border-color: #A9A9A9;">
                         <i class="fas fa-user-lock mr-2 text-sm"></i>5. 修改管理員密碼
@@ -305,7 +314,9 @@
         </div>
     </div>
 
-    <!-- Toast -->
+    <!-- =============== 以下為各種跳出式視窗 (Modal) =============== -->
+
+    <!-- Toast 提示框 -->
     <div id="toast" class="fixed bottom-5 right-5 transform translate-y-20 opacity-0 transition-all duration-400 z-50 flex items-center p-4 mb-4 rounded-sm shadow-xl border border-[var(--wafu-border)]" style="background-color: rgba(255,255,255,0.95); backdrop-filter: blur(4px);">
         <div id="toastIcon" class="inline-flex flex-shrink-0 justify-center items-center w-8 h-8 rounded-full"><i class="fas fa-info-circle"></i></div>
         <div id="toastMessage" class="ml-3 text-sm font-medium tracking-wide text-gray-800 pr-2">訊息</div>
@@ -342,7 +353,7 @@
         </div>
     </div>
 
-    <!-- 學生資料編輯視窗 (Modal) -->
+    <!-- 學生資料編輯 Modal -->
     <div id="studentEditModal" class="fixed inset-0 z-[100] hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
         <div class="fixed inset-0 bg-[#3E3A39] bg-opacity-40 backdrop-blur-sm transition-opacity" onclick="closeStudentModal()"></div>
         <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
@@ -376,7 +387,7 @@
         </div>
     </div>
 
-    <!-- 修改評量名稱視窗 (Modal) -->
+    <!-- 修改評量名稱 Modal -->
     <div id="renameAssessmentModal" class="fixed inset-0 z-[100] hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
         <div class="fixed inset-0 bg-[#3E3A39] bg-opacity-40 backdrop-blur-sm transition-opacity" onclick="closeRenameAssessmentModal()"></div>
         <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
@@ -404,7 +415,7 @@
         </div>
     </div>
 
-    <!-- 編輯評量成績明細視窗 (Modal) -->
+    <!-- 編輯評量成績明細 Modal -->
     <div id="editAssessmentModal" class="fixed inset-0 z-[100] hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
         <div class="fixed inset-0 bg-[#3E3A39] bg-opacity-40 backdrop-blur-sm transition-opacity" onclick="closeEditAssessmentModal()"></div>
         <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
@@ -417,13 +428,13 @@
                     <div class="px-6 py-4 space-y-4">
                         <input type="hidden" id="editAssessmentName">
                         <p class="text-sm text-gray-500 mb-2">您可以針對此評量<span class="text-[var(--wafu-accent)] font-bold">刪除特定科目 (點擊表頭 X)</span>，或<span class="text-[var(--wafu-accent)] font-bold">刪除個別學生的紀錄 (點擊右側按鈕)</span>。</p>
-                        <div class="max-h-[60vh] overflow-y-auto overflow-x-auto border border-[var(--wafu-border)] rounded-sm">
+                        <div class="max-h-[60vh] overflow-y-auto overflow-x-auto border border-[var(--wafu-border)] rounded-sm no-scrollbar">
                             <table class="min-w-full divide-y divide-[var(--wafu-border)] text-sm">
                                 <thead class="bg-[#F5F4F0] sticky top-0 z-10 shadow-sm" id="editAssessmentThead">
-                                    <!-- 動態產生表頭與刪除按鈕 -->
+                                    <!-- 動態產生表頭 -->
                                 </thead>
                                 <tbody id="editAssessmentTbody" class="divide-y divide-[var(--wafu-border)] bg-white">
-                                    <!-- 動態產生內容與刪除按鈕 -->
+                                    <!-- 動態產生內容 -->
                                 </tbody>
                             </table>
                         </div>
@@ -454,11 +465,17 @@
         let currentStats = null; 
 
         // ==========================================
-        // 1. 初始化 Firebase
+        // 1. 初始化 Firebase (解決部署到外部網站的連線問題)
         // ==========================================
         async function initSystem() {
             try {
-                      const firebaseConfig = {
+                let firebaseConfig;
+                // 判斷是否在預覽環境，若不是，請替換為您的 Firebase Config
+                if (typeof __firebase_config !== 'undefined') {
+                    firebaseConfig = JSON.parse(__firebase_config);
+                } else {
+                    // ⚠️【重要】：若要放到 GitHub Pages，請在此貼上您的 Firebase Web API 金鑰
+                          const firebaseConfig = {
   apiKey: "AIzaSyCOv3fRkben0ycq6hQJulwMhkbON8fxLxI",
   authDomain: "grades-2421f.firebaseapp.com",
   projectId: "grades-2421f",
@@ -467,7 +484,9 @@
   appId: "1:952321148582:web:f932a627c0bd24a440d667"
 };
 
-                appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+                }
+
+                appId = typeof __app_id !== 'undefined' ? __app_id : 'my-school-grades';
                 const app = initializeApp(firebaseConfig);
                 auth = getAuth(app);
                 db = getFirestore(app);
@@ -484,11 +503,12 @@
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     await signInWithCustomToken(auth, __initial_auth_token);
                 } else {
+                    // ⚠️【重要】：需在 Firebase Console > Authentication 開啟「匿名登入 (Anonymous)」
                     await signInAnonymously(auth);
                 }
             } catch (error) {
-                console.error("Firebase Initialization Failed:", error);
-                document.getElementById('subtitle').textContent = '系統連線失敗，請重整頁面。';
+                console.error("Firebase 初始化失敗:", error);
+                document.getElementById('subtitle').textContent = '資料庫連線失敗，請確認 Firebase 設定檔是否正確填寫。';
             }
         }
 
@@ -529,7 +549,7 @@
                     document.getElementById('loginForm').classList.add('hidden');
                     document.getElementById('subtitle').textContent = '系統管理後台';
                     document.getElementById('adminSection').classList.remove('hidden');
-                    await loadAssessmentsToDropdown('manageAssessmentSelect', 'existingAssessmentsList');
+                    await loadAssessmentsToDropdown('manageAssessmentSelect', 'importSheetSelect');
                     await window.loadAdminRoster(); 
                     showToast('管理員登入成功', 'success');
                 } else {
@@ -560,41 +580,49 @@
             }
         });
 
+        // ==========================================
+        // 3. 處理下拉選單 (傳統 Select + Input)
+        // ==========================================
         async function loadAssessmentsToDropdown(...selectIds) {
             const snapshot = await getDocs(assessmentsCol());
-            
             let assessments = [];
             snapshot.forEach(doc => {
                 assessments.push({ id: doc.id, updatedAt: doc.data().updatedAt || 0 });
             });
-            
             assessments.sort((a, b) => b.updatedAt - a.updatedAt);
             
             selectIds.forEach(selectId => {
                 const select = document.getElementById(selectId);
                 if (!select) return;
                 
-                if (select.tagName === 'SELECT') {
+                if (selectId === 'importSheetSelect') {
+                    select.innerHTML = '<option value="" disabled selected>請選擇現有評量，或選擇下方新增...</option><option value="NEW_SHEET" class="font-bold text-[var(--wafu-primary)]">+ 新增評量名稱</option>';
+                } else {
                     select.innerHTML = '<option value="" disabled selected>請選擇...</option>';
-                    assessments.forEach(item => {
-                        const option = document.createElement('option');
-                        option.value = item.id;
-                        option.textContent = item.id;
-                        select.appendChild(option);
-                    });
-                } else if (select.tagName === 'DATALIST') {
-                    select.innerHTML = '';
-                    assessments.forEach(item => {
-                        const option = document.createElement('option');
-                        option.value = item.id;
-                        select.appendChild(option);
-                    });
                 }
+
+                assessments.forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = item.id;
+                    option.textContent = item.id;
+                    select.appendChild(option);
+                });
             });
         }
 
+        window.toggleNewSheetInput = () => {
+            const select = document.getElementById('importSheetSelect');
+            const input = document.getElementById('importSheetName');
+            if (select.value === 'NEW_SHEET') {
+                input.classList.remove('hidden');
+                input.focus();
+            } else {
+                input.classList.add('hidden');
+            }
+        };
+
         // ==========================================
-        // 3. 學生查詢成績
+        // 4. 學生查詢成績
         // ==========================================
         document.getElementById('queryForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -693,7 +721,7 @@
         }
 
         // ==========================================
-        // 4. 管理員：匯入與基本操作
+        // 5. 管理員：匯入與基本操作
         // ==========================================
         window.handleImportRoster = async () => {
             const fileInput = document.getElementById('rosterCsvFile');
@@ -718,9 +746,11 @@
         };
 
         window.handleImportGrades = async () => {
-            const name = document.getElementById('importSheetName').value.trim();
+            const selectVal = document.getElementById('importSheetSelect').value;
+            const name = selectVal === 'NEW_SHEET' ? document.getElementById('importSheetName').value.trim() : selectVal;
             const fileInput = document.getElementById('csvFile');
-            if (!name) return showToast('請填寫評量名稱', 'warning');
+            
+            if (!name) return showToast('請指定評量名稱', 'warning');
             if (fileInput.files.length === 0) return showToast('請選擇 CSV 檔案', 'warning');
             
             toggleBtn('importBtn', 'importBtnText', 'importSpinner', true, '處理中...');
@@ -744,7 +774,9 @@
                 showToast(`成績 [${name}] 匯入成功！`, 'success');
                 fileInput.value = '';
                 document.getElementById('importSheetName').value = '';
-                await loadAssessmentsToDropdown('manageAssessmentSelect', 'existingAssessmentsList');
+                document.getElementById('importSheetSelect').value = '';
+                document.getElementById('importSheetName').classList.add('hidden');
+                await loadAssessmentsToDropdown('manageAssessmentSelect', 'importSheetSelect');
             } catch (error) {
                 showToast('匯入失敗: ' + error.message, 'error');
             } finally {
@@ -761,7 +793,7 @@
             try {
                 await deleteDoc(assessmentRef(name));
                 showToast('刪除成功', 'success');
-                await loadAssessmentsToDropdown('manageAssessmentSelect', 'existingAssessmentsList');
+                await loadAssessmentsToDropdown('manageAssessmentSelect', 'importSheetSelect');
             } catch(e) {
                 showToast('刪除失敗', 'error');
             } finally {
@@ -805,7 +837,7 @@
 
                 showToast('評量名稱修改成功', 'success');
                 window.closeRenameAssessmentModal();
-                await loadAssessmentsToDropdown('manageAssessmentSelect', 'existingAssessmentsList');
+                await loadAssessmentsToDropdown('manageAssessmentSelect', 'importSheetSelect');
             } catch (error) {
                 showToast('修改名稱失敗', 'error');
             } finally {
@@ -814,7 +846,7 @@
         };
 
         // ==========================================
-        // 5. 新增：編輯評量明細 (刪除科目與個別學生)
+        // 6. 編輯評量明細 (刪除科目與個別學生)
         // ==========================================
         let editingAssessmentData = [];
         let editingAssessmentKeys = [];
@@ -833,7 +865,6 @@
                 const snap = await getDoc(assessmentRef(name));
                 if (!snap.exists()) throw new Error('資料不存在');
                 
-                // 深拷貝
                 editingAssessmentData = JSON.parse(JSON.stringify(snap.data().records || []));
                 
                 if (editingAssessmentData.length > 0) {
@@ -841,7 +872,6 @@
                      editingAssessmentData.forEach(r => Object.keys(r).forEach(k => keysSet.add(k)));
                      editingAssessmentKeys = Array.from(keysSet);
                      
-                     // 確保「密碼」在第一欄
                      const pwdIdx = editingAssessmentKeys.indexOf('密碼');
                      if (pwdIdx > -1) {
                          editingAssessmentKeys.splice(pwdIdx, 1);
@@ -940,93 +970,8 @@
             }
         };
 
-
         // ==========================================
-        // 6. UI 共用與其他功能
-        // ==========================================
-        window.handleChangeAdminPwd = async () => {
-            const newPwd = document.getElementById('newAdminPwd').value.trim();
-            if (!newPwd) return showToast('請輸入新密碼', 'warning');
-            
-            toggleBtn('changePwdBtn', 'changePwdBtnText', 'changePwdSpinner', true, '處理中...');
-            try {
-                await setDoc(configRef(), { adminPassword: newPwd }, { merge: true });
-                showToast('管理員密碼修改成功！', 'success');
-                document.getElementById('newAdminPwd').value = '';
-            } catch(e) {
-                showToast('修改失敗', 'error');
-            } finally {
-                toggleBtn('changePwdBtn', 'changePwdBtnText', 'changePwdSpinner', false, '確認修改密碼');
-            }
-        };
-
-        function readCSVFile(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = e => {
-                    try {
-                        const lines = e.target.result.split(/\r\n|\n/).filter(line => line.trim() !== '');
-                        if(lines.length < 2) return resolve([]);
-                        const headers = lines[0].split(',').map(c => c.trim().replace(/^"|"$/g, ''));
-                        const result = lines.slice(1).map(line => {
-                            const cells = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
-                            let obj = {};
-                            headers.forEach((h, i) => obj[h] = cells[i] || '');
-                            return obj;
-                        });
-                        resolve(result);
-                    } catch(err) { reject(err); }
-                };
-                reader.onerror = () => reject(new Error('檔案讀取失敗'));
-                reader.readAsText(file, 'UTF-8');
-            });
-        }
-
-        window.logout = () => {
-            currentRole = null;
-            currentUserInfo = null;
-            document.getElementById('password').value = '';
-            document.getElementById('studentSection').classList.add('hidden');
-            document.getElementById('adminSection').classList.add('hidden');
-            document.getElementById('resultArea').classList.add('hidden');
-            document.getElementById('loginForm').classList.remove('hidden');
-            document.getElementById('subtitle').textContent = '請輸入個人密碼以登入系統';
-            showToast('已登出系統', 'info');
-        };
-
-        window.showStatsModal = (subject) => {
-            if (!currentStats || !currentStats[subject]) return;
-            const stats = currentStats[subject];
-            document.getElementById('modalSubjectTitle').textContent = `「${subject}」分析`;
-            document.getElementById('modalAverage').textContent = `全班平均：${stats.average} 分`;
-            
-            const distBody = document.getElementById('modalDistBody');
-            distBody.innerHTML = '';
-            const ranges = ['100', '90-99', '80-89', '70-79', '60-69', '未滿60'];
-            let total = 0;
-            
-            ranges.forEach(range => {
-                const count = stats.dist[range] || 0;
-                total += count;
-                let rText = range === '100' ? '100 分' : (range === '未滿60' ? '未滿 60 分' : `${range} 分`);
-                distBody.innerHTML += `
-                    <tr class="hover:bg-[#FCFBFA]">
-                        <td class="px-4 py-3 text-left text-gray-700 font-medium">${rText}</td>
-                        <td class="px-4 py-3 text-right font-bold text-[var(--wafu-primary)]">${count} 人</td>
-                    </tr>`;
-            });
-            distBody.innerHTML += `
-                <tr class="bg-[#F5F4F0] border-t border-[var(--wafu-border)]">
-                    <td class="px-4 py-3 text-left font-bold text-gray-800">總計</td>
-                    <td class="px-4 py-3 text-right font-bold text-gray-800">${total} 人</td>
-                </tr>`;
-            document.getElementById('statsModal').classList.remove('hidden');
-        };
-
-        window.closeStatsModal = () => document.getElementById('statsModal').classList.add('hidden');
-
-        // ==========================================
-        // 7. 學生基本資料管理邏輯
+        // 7. 管理員：學生基本資料管理邏輯
         // ==========================================
         let adminRosterCache = [];
 
@@ -1143,6 +1088,90 @@
                 showToast('刪除失敗', 'error');
             }
         };
+
+        // ==========================================
+        // 8. 其他共用 UI 與解析工具
+        // ==========================================
+        window.handleChangeAdminPwd = async () => {
+            const newPwd = document.getElementById('newAdminPwd').value.trim();
+            if (!newPwd) return showToast('請輸入新密碼', 'warning');
+            
+            toggleBtn('changePwdBtn', 'changePwdBtnText', 'changePwdSpinner', true, '處理中...');
+            try {
+                await setDoc(configRef(), { adminPassword: newPwd }, { merge: true });
+                showToast('管理員密碼修改成功！', 'success');
+                document.getElementById('newAdminPwd').value = '';
+            } catch(e) {
+                showToast('修改失敗', 'error');
+            } finally {
+                toggleBtn('changePwdBtn', 'changePwdBtnText', 'changePwdSpinner', false, '確認修改密碼');
+            }
+        };
+
+        function readCSVFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    try {
+                        const lines = e.target.result.split(/\r\n|\n/).filter(line => line.trim() !== '');
+                        if(lines.length < 2) return resolve([]);
+                        const headers = lines[0].split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+                        const result = lines.slice(1).map(line => {
+                            const cells = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+                            let obj = {};
+                            headers.forEach((h, i) => obj[h] = cells[i] || '');
+                            return obj;
+                        });
+                        resolve(result);
+                    } catch(err) { reject(err); }
+                };
+                reader.onerror = () => reject(new Error('檔案讀取失敗'));
+                reader.readAsText(file, 'UTF-8');
+            });
+        }
+
+        window.logout = () => {
+            currentRole = null;
+            currentUserInfo = null;
+            document.getElementById('password').value = '';
+            document.getElementById('studentSection').classList.add('hidden');
+            document.getElementById('adminSection').classList.add('hidden');
+            document.getElementById('resultArea').classList.add('hidden');
+            document.getElementById('loginForm').classList.remove('hidden');
+            document.getElementById('subtitle').textContent = '請輸入個人密碼以登入系統';
+            showToast('已登出系統', 'info');
+        };
+
+        window.showStatsModal = (subject) => {
+            if (!currentStats || !currentStats[subject]) return;
+            const stats = currentStats[subject];
+            document.getElementById('modalSubjectTitle').textContent = `「${subject}」分析`;
+            document.getElementById('modalAverage').textContent = `全班平均：${stats.average} 分`;
+            
+            const distBody = document.getElementById('modalDistBody');
+            distBody.innerHTML = '';
+            const ranges = ['100', '90-99', '80-89', '70-79', '60-69', '未滿60'];
+            let total = 0;
+            
+            ranges.forEach(range => {
+                const count = stats.dist[range] || 0;
+                total += count;
+                let rText = range === '100' ? '100 分' : (range === '未滿60' ? '未滿 60 分' : `${range} 分`);
+                distBody.innerHTML += `
+                    <tr class="hover:bg-[#FCFBFA]">
+                        <td class="px-4 py-3 text-left text-gray-700 font-medium">${rText}</td>
+                        <td class="px-4 py-3 text-right font-bold text-[var(--wafu-primary)]">${count} 人</td>
+                    </tr>`;
+            });
+            distBody.innerHTML += `
+                <tr class="bg-[#F5F4F0] border-t border-[var(--wafu-border)]">
+                    <td class="px-4 py-3 text-left font-bold text-gray-800">總計</td>
+                    <td class="px-4 py-3 text-right font-bold text-gray-800">${total} 人</td>
+                </tr>`;
+            document.getElementById('statsModal').classList.remove('hidden');
+        };
+
+        window.closeStatsModal = () => document.getElementById('statsModal').classList.add('hidden');
 
         function toggleBtn(btnId, textId, spinnerId, isLoading, loadingText) {
             const btn = document.getElementById(btnId);
