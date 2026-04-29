@@ -289,22 +289,6 @@
                         <i class="fas fa-user-lock mr-2 text-sm"></i>5. 修改管理員密碼
                     </h3>
                     <div class="space-y-4">
-                        <select id="deleteAssessmentSelect" class="w-full px-3 py-2 wafu-input appearance-none">
-                            <option value="" disabled selected>載入中...</option>
-                        </select>
-                        <button type="button" id="deleteBtn" onclick="handleDeleteAssessment()" class="w-full flex justify-center items-center py-3 btn-wafu-danger tracking-wider">
-                            <span id="deleteBtnText">永久刪除此評量</span>
-                            <div id="deleteSpinner" class="hidden ml-2 loader border-2 border-white rounded-full w-4 h-4"></div>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- 修改密碼功能 -->
-                <div class="bg-[#FCFBFA] p-6 rounded border border-[var(--wafu-border)]">
-                    <h3 class="font-bold text-lg mb-4 serif-font border-l-4 pl-3" style="border-color: #A9A9A9;">
-                        <i class="fas fa-user-lock mr-2 text-sm"></i>修改管理員密碼
-                    </h3>
-                    <div class="space-y-4">
                         <input type="password" id="newAdminPwd" placeholder="輸入新密碼" class="w-full px-3 py-2 wafu-input">
                         <button type="button" id="changePwdBtn" onclick="handleChangeAdminPwd()" class="w-full flex justify-center items-center py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-sm transition-colors tracking-wider">
                             <span id="changePwdBtnText">確認修改密碼</span>
@@ -433,7 +417,7 @@
         // ==========================================
         async function initSystem() {
             try {
-                        const firebaseConfig = {
+                      const firebaseConfig = {
   apiKey: "AIzaSyCOv3fRkben0ycq6hQJulwMhkbON8fxLxI",
   authDomain: "grades-2421f.firebaseapp.com",
   projectId: "grades-2421f",
