@@ -214,7 +214,7 @@
                     </div>
                 </div>
 
-                <!-- 新增：學生基本資料管理 -->
+                <!-- 學生基本資料管理 -->
                 <div class="bg-[#FCFBFA] p-6 rounded border border-[var(--wafu-border)]">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="font-bold text-lg serif-font border-l-4 pl-3" style="border-color: var(--wafu-primary);">
@@ -262,20 +262,23 @@
                     </div>
                 </div>
 
-                <!-- 評量紀錄管理功能 (修改名稱/刪除) -->
+                <!-- 評量紀錄管理功能 (編輯/修改名稱/刪除) -->
                 <div class="bg-[#FCFBFA] p-6 rounded border border-[var(--wafu-border)]">
                     <h3 class="font-bold text-lg mb-4 serif-font border-l-4 pl-3" style="border-color: var(--wafu-accent);">
-                        <i class="fas fa-tasks mr-2 text-sm"></i>4. 評量紀錄管理 (修改名稱 / 刪除)
+                        <i class="fas fa-tasks mr-2 text-sm"></i>4. 評量紀錄管理 (編輯 / 改名 / 刪除)
                     </h3>
                     <div class="space-y-4">
                         <select id="manageAssessmentSelect" class="w-full px-3 py-2 wafu-input appearance-none">
                             <option value="" disabled selected>載入中...</option>
                         </select>
-                        <div class="flex space-x-3">
-                            <button type="button" onclick="openRenameAssessmentModal()" class="w-1/2 flex justify-center items-center py-3 btn-wafu tracking-wider">
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <button type="button" onclick="openEditAssessmentModal()" class="w-full sm:w-1/3 flex justify-center items-center py-3 btn-wafu tracking-wider text-sm">
+                                <i class="fas fa-table mr-2"></i>編輯明細
+                            </button>
+                            <button type="button" onclick="openRenameAssessmentModal()" class="w-full sm:w-1/3 flex justify-center items-center py-3 btn-wafu tracking-wider text-sm">
                                 <i class="fas fa-pen mr-2"></i>修改名稱
                             </button>
-                            <button type="button" id="deleteBtn" onclick="handleDeleteAssessment()" class="w-1/2 flex justify-center items-center py-3 btn-wafu-danger tracking-wider">
+                            <button type="button" id="deleteBtn" onclick="handleDeleteAssessment()" class="w-full sm:w-1/3 flex justify-center items-center py-3 btn-wafu-danger tracking-wider text-sm">
                                 <span id="deleteBtnText"><i class="fas fa-trash-alt mr-2"></i>刪除評量</span>
                                 <div id="deleteSpinner" class="hidden ml-2 loader border-2 border-white rounded-full w-4 h-4"></div>
                             </button>
@@ -301,12 +304,13 @@
         </div>
     </div>
 
-    <!-- Toast & Modals... -->
+    <!-- Toast -->
     <div id="toast" class="fixed bottom-5 right-5 transform translate-y-20 opacity-0 transition-all duration-400 z-50 flex items-center p-4 mb-4 rounded-sm shadow-xl border border-[var(--wafu-border)]" style="background-color: rgba(255,255,255,0.95); backdrop-filter: blur(4px);">
         <div id="toastIcon" class="inline-flex flex-shrink-0 justify-center items-center w-8 h-8 rounded-full"><i class="fas fa-info-circle"></i></div>
         <div id="toastMessage" class="ml-3 text-sm font-medium tracking-wide text-gray-800 pr-2">訊息</div>
     </div>
 
+    <!-- 統計 Modal -->
     <div id="statsModal" class="fixed inset-0 z-[100] hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
         <div class="fixed inset-0 bg-[#3E3A39] bg-opacity-40 backdrop-blur-sm transition-opacity" onclick="closeStatsModal()"></div>
         <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
@@ -399,13 +403,49 @@
         </div>
     </div>
 
+    <!-- 編輯評量成績明細視窗 (Modal) -->
+    <div id="editAssessmentModal" class="fixed inset-0 z-[100] hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="fixed inset-0 bg-[#3E3A39] bg-opacity-40 backdrop-blur-sm transition-opacity" onclick="closeEditAssessmentModal()"></div>
+        <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
+            <div class="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
+                <div class="relative transform overflow-hidden rounded-sm bg-[#FCFBFA] text-left shadow-2xl transition-all sm:my-8 w-full sm:max-w-5xl fade-in border border-[var(--wafu-border)]">
+                    <div class="px-4 pb-4 pt-5 sm:p-6 sm:pb-4 border-b border-[var(--wafu-border)] flex justify-between items-center">
+                        <h3 class="text-xl font-bold leading-6 text-[var(--wafu-text)] serif-font" id="editModalTitle">編輯評量成績明細</h3>
+                        <button onclick="closeEditAssessmentModal()" class="text-gray-400 hover:text-[var(--wafu-accent)] transition-colors"><i class="fas fa-times text-xl"></i></button>
+                    </div>
+                    <div class="px-6 py-4 space-y-4">
+                        <input type="hidden" id="editAssessmentName">
+                        <p class="text-sm text-gray-500 mb-2">您可以針對此評量<span class="text-[var(--wafu-accent)] font-bold">刪除特定科目 (點擊表頭 X)</span>，或<span class="text-[var(--wafu-accent)] font-bold">刪除個別學生的紀錄 (點擊右側按鈕)</span>。</p>
+                        <div class="max-h-[60vh] overflow-y-auto overflow-x-auto border border-[var(--wafu-border)] rounded-sm">
+                            <table class="min-w-full divide-y divide-[var(--wafu-border)] text-sm">
+                                <thead class="bg-[#F5F4F0] sticky top-0 z-10 shadow-sm" id="editAssessmentThead">
+                                    <!-- 動態產生表頭與刪除按鈕 -->
+                                </thead>
+                                <tbody id="editAssessmentTbody" class="divide-y divide-[var(--wafu-border)] bg-white">
+                                    <!-- 動態產生內容與刪除按鈕 -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="bg-[#F5F4F0] px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6 border-t border-[var(--wafu-border)]">
+                        <button type="button" onclick="saveEditedAssessment()" id="saveEditedBtn" class="w-full inline-flex justify-center rounded-sm bg-[var(--wafu-primary)] px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-[var(--wafu-primary-hover)] sm:ml-3 sm:w-auto tracking-widest transition-colors">
+                            <span id="saveEditedBtnText">儲 存 變 更</span>
+                            <div id="saveEditedSpinner" class="hidden ml-2 loader border-2 border-white rounded-full w-4 h-4"></div>
+                        </button>
+                        <button type="button" onclick="closeEditAssessmentModal()" class="mt-3 w-full inline-flex justify-center rounded-sm bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm ring-1 ring-inset ring-[var(--wafu-border)] hover:bg-gray-50 sm:mt-0 sm:w-auto tracking-widest transition-colors">取 消</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Firebase 整合腳本 -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, getDocs, collection, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        let db, auth, appId, userDocId;
+        let db, auth, appId;
         let isFirebaseReady = false;
         
         let currentUserInfo = null; 
@@ -431,17 +471,15 @@
                 auth = getAuth(app);
                 db = getFirestore(app);
 
-                // Auth 監聽器
                 onAuthStateChanged(auth, async (user) => {
                     if (user) {
                         isFirebaseReady = true;
                         document.getElementById('subtitle').textContent = '請輸入個人密碼以登入系統';
                         document.getElementById('loginForm').classList.remove('hidden');
-                        await ensureSystemDocs(); // 確保資料庫結構存在
+                        await ensureSystemDocs();
                     }
                 });
 
-                // Rule 3: 登入匿名驗證
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     await signInWithCustomToken(auth, __initial_auth_token);
                 } else {
@@ -486,16 +524,14 @@
                 const adminPwd = configSnap.exists() ? configSnap.data().adminPassword : 'admin';
 
                 if (pwd === adminPwd) {
-                    // 管理員登入
                     currentRole = 'admin';
                     document.getElementById('loginForm').classList.add('hidden');
                     document.getElementById('subtitle').textContent = '系統管理後台';
                     document.getElementById('adminSection').classList.remove('hidden');
                     await loadAssessmentsToDropdown('manageAssessmentSelect');
-                    await window.loadAdminRoster(); // 載入學生名冊
+                    await window.loadAdminRoster(); 
                     showToast('管理員登入成功', 'success');
                 } else {
-                    // 學生登入
                     const rosterSnap = await getDoc(rosterRef());
                     const students = rosterSnap.exists() ? rosterSnap.data().students : [];
                     const studentInfo = students.find(s => s['密碼'] === pwd || s.password === pwd);
@@ -523,22 +559,16 @@
             }
         });
 
-        // 載入評量列表
         async function loadAssessmentsToDropdown(selectId) {
             const select = document.getElementById(selectId);
             select.innerHTML = '<option value="" disabled selected>請選擇...</option>';
             const snapshot = await getDocs(assessmentsCol());
             
-            // 將取得的資料放入陣列中，以便進行記憶體排序
             let assessments = [];
             snapshot.forEach(doc => {
-                assessments.push({
-                    id: doc.id,
-                    updatedAt: doc.data().updatedAt || 0 // 舊資料預設為0
-                });
+                assessments.push({ id: doc.id, updatedAt: doc.data().updatedAt || 0 });
             });
             
-            // 依時間戳記遞減排序 (最新新增的排在最上面)
             assessments.sort((a, b) => b.updatedAt - a.updatedAt);
             
             assessments.forEach(item => {
@@ -569,7 +599,6 @@
 
                 if (!myGrade) throw new Error('該次評量找不到您的資料');
 
-                // 計算全班統計
                 currentStats = calculateStats(records);
                 renderGrades(myGrade);
                 showToast('查詢完成', 'success');
@@ -650,7 +679,7 @@
         }
 
         // ==========================================
-        // 4. 管理員功能綁定至 window (以便 html 呼叫)
+        // 4. 管理員：匯入與基本操作
         // ==========================================
         window.handleImportRoster = async () => {
             const fileInput = document.getElementById('rosterCsvFile');
@@ -661,11 +690,10 @@
                 const data = await readCSVFile(fileInput.files[0]);
                 if (!data || data.length === 0 || !data[0]['密碼']) throw new Error('名冊必須包含 [密碼] 欄位');
                 
-                // 強制將密碼轉為字串
                 const students = data.map(d => ({ ...d, '密碼': String(d['密碼']) }));
                 await setDoc(rosterRef(), { students });
                 
-                await window.loadAdminRoster(); // 更新學生名冊列表
+                await window.loadAdminRoster();
                 showToast('學生名冊匯入成功！', 'success');
                 fileInput.value = '';
             } catch (error) {
@@ -686,7 +714,6 @@
                 let data = await readCSVFile(fileInput.files[0]);
                 if (!data || data.length === 0 || !data[0]['密碼']) throw new Error('成績單必須包含 [密碼] 欄位');
                 
-                // 將成績欄位轉為數字，密碼維持字串
                 data = data.map(row => {
                     let newRow = {};
                     for (let key in row) {
@@ -699,10 +726,7 @@
                     return newRow;
                 });
 
-                await setDoc(assessmentRef(name), { 
-                    records: data,
-                    updatedAt: Date.now() // 加入時間戳記供選單排序
-                });
+                await setDoc(assessmentRef(name), { records: data, updatedAt: Date.now() });
                 showToast(`成績 [${name}] 匯入成功！`, 'success');
                 fileInput.value = '';
                 document.getElementById('importSheetName').value = '';
@@ -727,7 +751,8 @@
             } catch(e) {
                 showToast('刪除失敗', 'error');
             } finally {
-                toggleBtn('deleteBtn', 'deleteBtnText', 'deleteSpinner', false, '刪除評量');
+                toggleBtn('deleteBtn', 'deleteBtnText', 'deleteSpinner', false, '');
+                document.getElementById('deleteBtnText').innerHTML = '<i class="fas fa-trash-alt mr-2"></i>刪除評量';
             }
         };
 
@@ -740,41 +765,34 @@
             document.getElementById('renameAssessmentModal').classList.remove('hidden');
         };
 
-        window.closeRenameAssessmentModal = () => {
-            document.getElementById('renameAssessmentModal').classList.add('hidden');
-        };
+        window.closeRenameAssessmentModal = () => document.getElementById('renameAssessmentModal').classList.add('hidden');
 
         window.saveRenameAssessment = async () => {
             const oldName = document.getElementById('renameOldName').value;
             const newName = document.getElementById('renameNewName').value.trim();
 
             if (!newName) return showToast('請輸入新名稱', 'warning');
-            if (oldName === newName) return window.closeRenameAssessmentModal(); // 若沒改名則直接關閉
+            if (oldName === newName) return window.closeRenameAssessmentModal();
 
             toggleBtn('saveRenameBtn', 'saveRenameBtnText', 'saveRenameSpinner', true, '儲存中...');
             
             try {
-                // 1. 檢查新名稱是否已存在，防止意外覆蓋
                 const newSnap = await getDoc(assessmentRef(newName));
                 if (newSnap.exists()) {
                     showToast(`名稱 [${newName}] 已存在，請換一個名稱`, 'warning');
                     return;
                 }
 
-                // 2. 讀取舊的成績資料
                 const oldSnap = await getDoc(assessmentRef(oldName));
                 if (!oldSnap.exists()) throw new Error('舊評量紀錄已不存在');
-                const oldData = oldSnap.data();
-
-                // 3. 將資料寫入新的文件 ID，然後刪除舊的 (更新時間戳記確保排在最上方)
-                await setDoc(assessmentRef(newName), { ...oldData, updatedAt: Date.now() });
+                
+                await setDoc(assessmentRef(newName), { ...oldSnap.data(), updatedAt: Date.now() });
                 await deleteDoc(assessmentRef(oldName));
 
                 showToast('評量名稱修改成功', 'success');
                 window.closeRenameAssessmentModal();
-                await loadAssessmentsToDropdown('manageAssessmentSelect'); // 刷新選單
+                await loadAssessmentsToDropdown('manageAssessmentSelect');
             } catch (error) {
-                console.error(error);
                 showToast('修改名稱失敗', 'error');
             } finally {
                 toggleBtn('saveRenameBtn', 'saveRenameBtnText', 'saveRenameSpinner', false, '儲 存');
@@ -782,7 +800,7 @@
         };
 
         // ==========================================
-        // 7. 編輯評量細項 (刪除欄/列)
+        // 5. 新增：編輯評量明細 (刪除科目與個別學生)
         // ==========================================
         let editingAssessmentData = [];
         let editingAssessmentKeys = [];
@@ -801,7 +819,7 @@
                 const snap = await getDoc(assessmentRef(name));
                 if (!snap.exists()) throw new Error('資料不存在');
                 
-                // 深拷貝資料以供編輯
+                // 深拷貝
                 editingAssessmentData = JSON.parse(JSON.stringify(snap.data().records || []));
                 
                 if (editingAssessmentData.length > 0) {
@@ -809,7 +827,7 @@
                      editingAssessmentData.forEach(r => Object.keys(r).forEach(k => keysSet.add(k)));
                      editingAssessmentKeys = Array.from(keysSet);
                      
-                     // 確保「密碼」永遠固定在第一欄
+                     // 確保「密碼」在第一欄
                      const pwdIdx = editingAssessmentKeys.indexOf('密碼');
                      if (pwdIdx > -1) {
                          editingAssessmentKeys.splice(pwdIdx, 1);
@@ -825,7 +843,7 @@
                 showToast('讀取資料失敗', 'error');
             } finally {
                 toggleBtn('deleteBtn', 'deleteBtnText', 'deleteSpinner', false, '');
-                document.getElementById('deleteBtnText').innerHTML = originalBtnText; // 恢復按鈕文字
+                document.getElementById('deleteBtnText').innerHTML = originalBtnText;
             }
         };
 
@@ -833,7 +851,6 @@
             const thead = document.getElementById('editAssessmentThead');
             const tbody = document.getElementById('editAssessmentTbody');
             
-            // 繪製表頭 (包含刪除科目按鈕)
             let thHtml = '<tr>';
             editingAssessmentKeys.forEach((key) => {
                 if (key !== '密碼' && key !== '姓名' && key !== '座號' && key !== '總分' && key !== '平均') {
@@ -850,7 +867,6 @@
             thHtml += `<th class="px-3 py-3 text-center font-bold text-[var(--wafu-accent)] bg-[#F5F4F0]">操作</th></tr>`;
             thead.innerHTML = thHtml;
             
-            // 繪製內容 (包含刪除該生紀錄按鈕)
             tbody.innerHTML = '';
             if (editingAssessmentData.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="${editingAssessmentKeys.length + 1}" class="text-center py-6 text-gray-500">尚無成績資料</td></tr>`;
@@ -887,9 +903,7 @@
             window.renderAssessmentEditor();
         };
 
-        window.closeEditAssessmentModal = () => {
-            document.getElementById('editAssessmentModal').classList.add('hidden');
-        };
+        window.closeEditAssessmentModal = () => document.getElementById('editAssessmentModal').classList.add('hidden');
 
         window.saveEditedAssessment = async () => {
             const name = document.getElementById('editAssessmentName').value;
@@ -912,6 +926,10 @@
             }
         };
 
+
+        // ==========================================
+        // 6. UI 共用與其他功能
+        // ==========================================
         window.handleChangeAdminPwd = async () => {
             const newPwd = document.getElementById('newAdminPwd').value.trim();
             if (!newPwd) return showToast('請輸入新密碼', 'warning');
@@ -928,7 +946,6 @@
             }
         };
 
-        // CSV Parser
         function readCSVFile(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -951,9 +968,6 @@
             });
         }
 
-        // ==========================================
-        // 5. UI 共用功能綁定至 window
-        // ==========================================
         window.logout = () => {
             currentRole = null;
             currentUserInfo = null;
@@ -998,7 +1012,7 @@
         window.closeStatsModal = () => document.getElementById('statsModal').classList.add('hidden');
 
         // ==========================================
-        // 6. 學生基本資料管理邏輯
+        // 7. 學生基本資料管理邏輯
         // ==========================================
         let adminRosterCache = [];
 
@@ -1068,7 +1082,6 @@
 
             if (!newPwd) return showToast('密碼為必填項目', 'warning');
 
-            // 檢查是否有重複密碼
             if (origPwd !== newPwd) {
                 const exists = adminRosterCache.find(s => (s['密碼'] || s.password) === newPwd);
                 if (exists) return showToast('此密碼已被使用', 'error');
@@ -1082,11 +1095,9 @@
             try {
                 let updatedRoster = [...adminRosterCache];
                 if (origPwd) { 
-                    // 編輯模式
                     const idx = updatedRoster.findIndex(s => (s['密碼'] || s.password) === origPwd);
                     if (idx !== -1) updatedRoster[idx] = { '密碼': newPwd, '座號': newSeat, '姓名': newName };
                 } else { 
-                    // 新增模式
                     updatedRoster.push({ '密碼': newPwd, '座號': newSeat, '姓名': newName });
                 }
 
