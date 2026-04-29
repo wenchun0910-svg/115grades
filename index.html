@@ -880,16 +880,17 @@
                      
                      // 取出科目進行排序 (排除基本欄位)
                      let subjects = Array.from(keysSet).filter(k => !['密碼', '座號', '姓名', '總分', '平均'].includes(k));
+                     
+                     // 加入排序邏輯：數字大的排上面 (遞減排序)
                      subjects.sort((a, b) => {
                          const matchA = a.match(/\d+/);
                          const matchB = b.match(/\d+/);
-                         const numA = matchA ? parseInt(matchA[0], 10) : 99999;
-                         const numB = matchB ? parseInt(matchB[0], 10) : 99999;
-                         if (numA !== numB) return numA - numB; // 遞增排序 (小到大)
+                         const numA = matchA ? parseInt(matchA[0], 10) : -1;
+                         const numB = matchB ? parseInt(matchB[0], 10) : -1;
+                         if (numA !== numB) return numB - numA; // 遞減排序 (大到小)
                          return a.localeCompare(b);
                      });
                      
-                     // 組合最終的欄位順序：密碼、座號、姓名優先，接著是排序後的科目
                      editingAssessmentKeys = ['密碼', '座號', '姓名'].filter(k => keysSet.has(k)).concat(subjects);
                 } else {
                      editingAssessmentKeys = ['密碼'];
