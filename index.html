@@ -470,9 +470,8 @@
         async function initSystem() {
             try {
                 // ⚠️【請將下方的字串替換為您從 Firebase 後台取得的金鑰】
-                // 💡 提醒：請只複製大括號 { ... } 裡面的內容，不要連 const firebaseConfig = 也一起複製！
                 const myConfig = {
-                    apiKey: "AIzaSyCOv3fRkben0ycq6hQJulwMhkbON8fxLxI",
+                 apiKey: "AIzaSyCOv3fRkben0ycq6hQJulwMhkbON8fxLxI",
   authDomain: "grades-2421f.firebaseapp.com",
   projectId: "grades-2421f",
   storageBucket: "grades-2421f.firebasestorage.app",
@@ -481,7 +480,6 @@
 
                 };
 
-                // 優先抓取環境預覽變數，沒有的話就使用您填寫的 myConfig
                 let activeConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : myConfig;
                 appId = typeof __app_id !== 'undefined' ? __app_id : 'my-school-grades';
                 
@@ -501,7 +499,6 @@
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     await signInWithCustomToken(auth, __initial_auth_token);
                 } else {
-                    // ⚠️【重要提醒】如果在自己的網頁上執行，必須在 Firebase Console 打開「匿名登入 (Anonymous)」
                     await signInAnonymously(auth);
                 }
             } catch (error) {
@@ -513,7 +510,7 @@
                     <div class="text-xs text-gray-500 text-left bg-white p-4 rounded border border-red-200 inline-block">
                         【修復清單檢查】<br>
                         1. 是否已在 Firebase Console 中啟用「Authentication > 匿名登入 (Anonymous)」？<br>
-                        2. 第 464 行的 firebaseConfig 金鑰是否填寫正確？<br>
+                        2. firebaseConfig 金鑰是否填寫正確？<br>
                         3. <span class="text-red-500 font-bold">請確認沒有複製到 "const firebaseConfig =" 這段字！</span>
                     </div>
                 `;
@@ -738,7 +735,8 @@
             toggleBtn('importRosterBtn', 'importRosterBtnText', 'importRosterSpinner', true, '處理中...');
             try {
                 const data = await readCSVFile(fileInput.files[0]);
-                if (!data || data.length === 0 || !data[0]['密碼']) throw new Error('名冊必須包含 [密碼] 欄位');
+                if (!data || data.length === 0) throw new Error('檔案為空或格式不符');
+                if (data[0]['密碼'] === undefined) throw new Error('名冊必須包含 [密碼] 欄位 (請確認存成 CSV UTF-8 格式)');
                 
                 const students = data.map(d => ({ ...d, '密碼': String(d['密碼']) }));
                 await setDoc(rosterRef(), { students });
@@ -764,7 +762,8 @@
             toggleBtn('importBtn', 'importBtnText', 'importSpinner', true, '處理中...');
             try {
                 let data = await readCSVFile(fileInput.files[0]);
-                if (!data || data.length === 0 || !data[0]['密碼']) throw new Error('成績單必須包含 [密碼] 欄位');
+                if (!data || data.length === 0) throw new Error('檔案為空或格式不符');
+                if (data[0]['密碼'] === undefined) throw new Error('成績單必須包含 [密碼] 欄位 (請確認存成 CSV UTF-8 格式)');
                 
                 data = data.map(row => {
                     let newRow = {};
@@ -1098,7 +1097,7 @@
         };
 
         // ==========================================
-        // 8. 其他共用 UI 與解析工具
+        // 8. 其他共用 UI 與解析工具 (強效修復 CSV 解析)
         // ==========================================
         window.handleChangeAdminPwd = async () => {
             const newPwd = document.getElementById('newAdminPwd').value.trim();
@@ -1116,25 +1115,45 @@
             }
         };
 
+        // 升級版 CSV 解析器：完全阻擋 Excel 產生的空行
         function readCSVFile(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onload = e => {
                     try {
-                        const lines = e.target.result.split(/\r\n|\n/).filter(line => line.trim() !== '');
+                        let text = e.target.result;
+                        
+                        // 處理部分 Excel 存檔時可能產生的 BOM 隱藏字元
+                        if (text.charCodeAt(0) === 0xFEFF) {
+                            text = text.substring(1);
+                        }
+                        
+                        // 分割行，並強制過濾掉完全空白，或是「只有逗號」的幽靈空行
+                        const lines = text.split(/\r\n|\n|\r/).filter(line => {
+                            const trimmedLine = line.trim();
+                            // 如果這行去掉所有逗號後是空的，代表這是一行幽靈空行
+                            return trimmedLine !== '' && trimmedLine.replace(/,/g, '').trim() !== '';
+                        });
+                        
                         if(lines.length < 2) return resolve([]);
+                        
                         const headers = lines[0].split(',').map(c => c.trim().replace(/^"|"$/g, ''));
-                        const result = lines.slice(1).map(line => {
+                        
+                        let result = lines.slice(1).map(line => {
                             const cells = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
                             let obj = {};
-                            headers.forEach((h, i) => obj[h] = cells[i] || '');
+                            headers.forEach((h, i) => obj[h] = cells[i] !== undefined ? cells[i] : '');
                             return obj;
                         });
+                        
+                        // 終極防線：這筆資料一定要有「密碼」屬性，且密碼不能為空
+                        result = result.filter(row => row['密碼'] && String(row['密碼']).trim() !== '');
+                        
                         resolve(result);
                     } catch(err) { reject(err); }
                 };
                 reader.onerror = () => reject(new Error('檔案讀取失敗'));
-                reader.readAsText(file, 'UTF-8');
+                reader.readAsText(file, 'UTF-8'); // 強制以 UTF-8 讀取，防止中文亂碼
             });
         }
 
