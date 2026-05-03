@@ -472,7 +472,7 @@
         async function initSystem() {
             try {
                 // ⚠️【請將下方的字串替換為您從 Firebase 後台取得的金鑰】
-                const myConfig = {
+               const myConfig = {
                    apiKey: "AIzaSyCOv3fRkben0ycq6hQJulwMhkbON8fxLxI",
   authDomain: "grades-2421f.firebaseapp.com",
   projectId: "grades-2421f",
@@ -481,6 +481,7 @@
   appId: "1:952321148582:web:f932a627c0bd24a440d667"
 
                 };
+
 
                 let activeConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : myConfig;
                 appId = typeof __app_id !== 'undefined' ? __app_id : 'my-school-grades';
@@ -643,13 +644,16 @@
                 const snap = await getDoc(assessmentRef(sheetName));
                 if (!snap.exists()) throw new Error('找不到此成績資料');
 
-                const records = snap.data().records || [];
+                const docData = snap.data();
+                const records = docData.records || [];
+                const customOrder = docData.customOrder || []; // 取得管理員儲存的自訂排序
+
                 const myGrade = records.find(r => r['密碼'] === currentUserInfo.pwd || r.password === currentUserInfo.pwd);
 
                 if (!myGrade) throw new Error('該次評量找不到您的資料');
 
                 currentStats = calculateStats(records);
-                renderGrades(myGrade);
+                renderGrades(myGrade, customOrder);
                 showToast('查詢完成', 'success');
             } catch (error) {
                 showToast(error.message, 'error');
@@ -690,11 +694,31 @@
             return stats;
         }
 
-        function renderGrades(grades) {
+        function renderGrades(grades, customOrder = []) {
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = '';
-            const subjects = Object.keys(grades).filter(s => !['密碼','座號','姓名','總分','平均'].includes(s));
             
+            let subjects = [];
+            
+            if (customOrder && customOrder.length > 0) {
+                // 如果有自訂排序，優先使用自訂排序，並過濾掉基本欄位
+                subjects = customOrder.filter(s => s in grades && !['密碼','座號','姓名','總分','平均'].includes(s));
+                // 將未包含在自訂排序中的新科目加到最後面
+                const missing = Object.keys(grades).filter(s => !subjects.includes(s) && !['密碼','座號','姓名','總分','平均'].includes(s));
+                subjects = subjects.concat(missing);
+            } else {
+                // 否則採用預設的數字遞減排序
+                subjects = Object.keys(grades).filter(s => !['密碼','座號','姓名','總分','平均'].includes(s));
+                subjects.sort((a, b) => {
+                    const matchA = a.match(/\d+/);
+                    const matchB = b.match(/\d+/);
+                    const numA = matchA ? parseInt(matchA[0], 10) : -1;
+                    const numB = matchB ? parseInt(matchB[0], 10) : -1;
+                    if (numA !== numB) return numB - numA;
+                    return a.localeCompare(b);
+                });
+            }
+
             subjects.forEach(subject => {
                 const tr = document.createElement('tr');
                 tr.className = 'hover:bg-[#FCFBFA] transition-colors';
@@ -728,134 +752,7 @@
         }
 
         // ==========================================
-        // 5. 管理員：匯入與基本操作
-        // ==========================================
-        window.handleImportRoster = async () => {
-            const fileInput = document.getElementById('rosterCsvFile');
-            if (fileInput.files.length === 0) return showToast('請選擇 CSV 檔案', 'warning');
-            
-            toggleBtn('importRosterBtn', 'importRosterBtnText', 'importRosterSpinner', true, '處理中...');
-            try {
-                const data = await readCSVFile(fileInput.files[0]);
-                if (!data || data.length === 0) throw new Error('檔案為空或格式不符');
-                if (data[0]['密碼'] === undefined) throw new Error('名冊必須包含 [密碼] 欄位 (請確認存成 CSV UTF-8 格式)');
-                
-                const students = data.map(d => ({ ...d, '密碼': String(d['密碼']) }));
-                await setDoc(rosterRef(), { students });
-                
-                await window.loadAdminRoster();
-                showToast('學生名冊匯入成功！', 'success');
-                fileInput.value = '';
-            } catch (error) {
-                showToast('匯入失敗: ' + error.message, 'error');
-            } finally {
-                toggleBtn('importRosterBtn', 'importRosterBtnText', 'importRosterSpinner', false, '上傳 / 覆寫名冊');
-            }
-        };
-
-        window.handleImportGrades = async () => {
-            const selectVal = document.getElementById('importSheetSelect').value;
-            const name = selectVal === 'NEW_SHEET' ? document.getElementById('importSheetName').value.trim() : selectVal;
-            const fileInput = document.getElementById('csvFile');
-            
-            if (!name) return showToast('請指定評量名稱', 'warning');
-            if (fileInput.files.length === 0) return showToast('請選擇 CSV 檔案', 'warning');
-            
-            toggleBtn('importBtn', 'importBtnText', 'importSpinner', true, '處理中...');
-            try {
-                let data = await readCSVFile(fileInput.files[0]);
-                if (!data || data.length === 0) throw new Error('檔案為空或格式不符');
-                if (data[0]['密碼'] === undefined) throw new Error('成績單必須包含 [密碼] 欄位 (請確認存成 CSV UTF-8 格式)');
-                
-                data = data.map(row => {
-                    let newRow = {};
-                    for (let key in row) {
-                        if (key === '密碼' || key === '座號' || key === '姓名') {
-                            newRow[key] = String(row[key]);
-                        } else {
-                            newRow[key] = (row[key] !== '' && !isNaN(row[key])) ? Number(row[key]) : row[key];
-                        }
-                    }
-                    return newRow;
-                });
-
-                await setDoc(assessmentRef(name), { records: data, updatedAt: Date.now() });
-                showToast(`成績 [${name}] 匯入成功！`, 'success');
-                fileInput.value = '';
-                document.getElementById('importSheetName').value = '';
-                document.getElementById('importSheetSelect').value = '';
-                document.getElementById('importSheetName').classList.add('hidden');
-                await loadAssessmentsToDropdown('manageAssessmentSelect', 'importSheetSelect');
-            } catch (error) {
-                showToast('匯入失敗: ' + error.message, 'error');
-            } finally {
-                toggleBtn('importBtn', 'importBtnText', 'importSpinner', false, '上傳 / 覆寫成績');
-            }
-        };
-
-        window.handleDeleteAssessment = async () => {
-            const name = document.getElementById('manageAssessmentSelect').value;
-            if (!name) return showToast('請選擇評量', 'warning');
-            if (!confirm(`確定要永久刪除 [${name}] 嗎？`)) return;
-
-            toggleBtn('deleteBtn', 'deleteBtnText', 'deleteSpinner', true, '刪除中...');
-            try {
-                await deleteDoc(assessmentRef(name));
-                showToast('刪除成功', 'success');
-                await loadAssessmentsToDropdown('manageAssessmentSelect', 'importSheetSelect');
-            } catch(e) {
-                showToast('刪除失敗', 'error');
-            } finally {
-                toggleBtn('deleteBtn', 'deleteBtnText', 'deleteSpinner', false, '');
-                document.getElementById('deleteBtnText').innerHTML = '<i class="fas fa-trash-alt mr-2"></i>刪除評量';
-            }
-        };
-
-        window.openRenameAssessmentModal = () => {
-            const oldName = document.getElementById('manageAssessmentSelect').value;
-            if (!oldName) return showToast('請先選擇要修改的評量', 'warning');
-            
-            document.getElementById('renameOldName').value = oldName;
-            document.getElementById('renameNewName').value = oldName;
-            document.getElementById('renameAssessmentModal').classList.remove('hidden');
-        };
-
-        window.closeRenameAssessmentModal = () => document.getElementById('renameAssessmentModal').classList.add('hidden');
-
-        window.saveRenameAssessment = async () => {
-            const oldName = document.getElementById('renameOldName').value;
-            const newName = document.getElementById('renameNewName').value.trim();
-
-            if (!newName) return showToast('請輸入新名稱', 'warning');
-            if (oldName === newName) return window.closeRenameAssessmentModal();
-
-            toggleBtn('saveRenameBtn', 'saveRenameBtnText', 'saveRenameSpinner', true, '儲存中...');
-            
-            try {
-                const newSnap = await getDoc(assessmentRef(newName));
-                if (newSnap.exists()) {
-                    showToast(`名稱 [${newName}] 已存在，請換一個名稱`, 'warning');
-                    return;
-                }
-
-                const oldSnap = await getDoc(assessmentRef(oldName));
-                if (!oldSnap.exists()) throw new Error('舊評量紀錄已不存在');
-                
-                await setDoc(assessmentRef(newName), { ...oldSnap.data(), updatedAt: Date.now() });
-                await deleteDoc(assessmentRef(oldName));
-
-                showToast('評量名稱修改成功', 'success');
-                window.closeRenameAssessmentModal();
-                await loadAssessmentsToDropdown('manageAssessmentSelect', 'importSheetSelect');
-            } catch (error) {
-                showToast('修改名稱失敗', 'error');
-            } finally {
-                toggleBtn('saveRenameBtn', 'saveRenameBtnText', 'saveRenameSpinner', false, '儲 存');
-            }
-        };
-
-        // ==========================================
-        // 6. 編輯評量明細 (刪除科目與個別學生)
+        // 6. 編輯評量明細 (移動欄位、刪除科目與個別學生)
         // ==========================================
         let editingAssessmentData = [];
         let editingAssessmentKeys = [];
@@ -874,26 +771,39 @@
                 const snap = await getDoc(assessmentRef(name));
                 if (!snap.exists()) throw new Error('資料不存在');
                 
-                editingAssessmentData = JSON.parse(JSON.stringify(snap.data().records || []));
+                const docData = snap.data();
+                editingAssessmentData = JSON.parse(JSON.stringify(docData.records || []));
+                const savedOrder = docData.customOrder || []; // 讀取自訂排序
                 
                 if (editingAssessmentData.length > 0) {
                      let keysSet = new Set();
                      editingAssessmentData.forEach(r => Object.keys(r).forEach(k => keysSet.add(k)));
                      
-                     // 取出科目進行排序 (排除基本欄位)
-                     let subjects = Array.from(keysSet).filter(k => !['密碼', '座號', '姓名', '總分', '平均'].includes(k));
+                     if (savedOrder.length > 0) {
+                         // 使用先前的排序，並補上可能漏掉的新欄位
+                         let validOrder = savedOrder.filter(k => keysSet.has(k));
+                         let missingKeys = Array.from(keysSet).filter(k => !validOrder.includes(k));
+                         editingAssessmentKeys = validOrder.concat(missingKeys);
+                     } else {
+                         // 初次編輯：套用數字遞減排序
+                         let subjects = Array.from(keysSet).filter(k => !['密碼', '座號', '姓名', '總分', '平均'].includes(k));
+                         subjects.sort((a, b) => {
+                             const matchA = a.match(/\d+/);
+                             const matchB = b.match(/\d+/);
+                             const numA = matchA ? parseInt(matchA[0], 10) : -1;
+                             const numB = matchB ? parseInt(matchB[0], 10) : -1;
+                             if (numA !== numB) return numB - numA;
+                             return a.localeCompare(b);
+                         });
+                         editingAssessmentKeys = ['密碼', '座號', '姓名'].filter(k => keysSet.has(k)).concat(subjects);
+                     }
                      
-                     // 加入排序邏輯：數字大的排上面 (遞減排序)
-                     subjects.sort((a, b) => {
-                         const matchA = a.match(/\d+/);
-                         const matchB = b.match(/\d+/);
-                         const numA = matchA ? parseInt(matchA[0], 10) : -1;
-                         const numB = matchB ? parseInt(matchB[0], 10) : -1;
-                         if (numA !== numB) return numB - numA; // 遞減排序 (大到小)
-                         return a.localeCompare(b);
-                     });
-                     
-                     editingAssessmentKeys = ['密碼', '座號', '姓名'].filter(k => keysSet.has(k)).concat(subjects);
+                     // 確保「密碼」永遠在第一欄
+                     const pwdIdx = editingAssessmentKeys.indexOf('密碼');
+                     if (pwdIdx > -1) {
+                         editingAssessmentKeys.splice(pwdIdx, 1);
+                         editingAssessmentKeys.unshift('密碼');
+                     }
                 } else {
                      editingAssessmentKeys = ['密碼'];
                 }
@@ -913,19 +823,28 @@
             const tbody = document.getElementById('editAssessmentTbody');
             
             let thHtml = '<tr>';
-            editingAssessmentKeys.forEach((key) => {
+            editingAssessmentKeys.forEach((key, idx) => {
                 if (key !== '密碼' && key !== '姓名' && key !== '座號' && key !== '總分' && key !== '平均') {
-                     thHtml += `<th class="px-3 py-3 text-center font-bold text-gray-700 whitespace-nowrap bg-[#E8E6E1] border-r border-[var(--wafu-border)]">
-                                  <div class="flex items-center justify-between space-x-3">
-                                      <span>${key}</span>
-                                      <button onclick="window.deleteAssessmentColumn('${key}')" class="text-[var(--wafu-accent)] hover:opacity-70 transition-opacity" title="刪除此科目所有成績"><i class="fas fa-times-circle"></i></button>
+                     // 加入左右移動按鈕
+                     let moveBtns = `<div class="flex space-x-2 text-[10px] text-[var(--wafu-primary)] opacity-70">`;
+                     if (idx > 1) moveBtns += `<button onclick="window.moveAssessmentColumn('${key}', -1)" class="hover:text-[var(--wafu-accent)] hover:opacity-100 p-1" title="向左移"><i class="fas fa-arrow-left"></i></button>`;
+                     if (idx < editingAssessmentKeys.length - 1) moveBtns += `<button onclick="window.moveAssessmentColumn('${key}', 1)" class="hover:text-[var(--wafu-accent)] hover:opacity-100 p-1" title="向右移"><i class="fas fa-arrow-right"></i></button>`;
+                     moveBtns += `</div>`;
+
+                     thHtml += `<th class="px-3 py-3 text-center font-bold text-gray-700 whitespace-nowrap bg-[#E8E6E1] border-r border-[var(--wafu-border)] min-w-[120px]">
+                                  <div class="flex flex-col items-center justify-center space-y-2">
+                                      <div class="flex items-center justify-between w-full px-1">
+                                          ${moveBtns}
+                                          <button onclick="window.deleteAssessmentColumn('${key}')" class="text-[var(--wafu-accent)] hover:opacity-70 transition-opacity" title="刪除此科目"><i class="fas fa-times-circle"></i></button>
+                                      </div>
+                                      <span class="text-[15px]">${key}</span>
                                   </div>
                                 </th>`;
                 } else {
-                     thHtml += `<th class="px-3 py-3 text-center font-bold text-gray-700 whitespace-nowrap bg-[#F5F4F0] border-r border-[var(--wafu-border)]">${key}</th>`;
+                     thHtml += `<th class="px-3 py-3 text-center font-bold text-gray-700 whitespace-nowrap bg-[#F5F4F0] border-r border-[var(--wafu-border)] align-bottom pb-4">${key}</th>`;
                 }
             });
-            thHtml += `<th class="px-3 py-3 text-center font-bold text-[var(--wafu-accent)] bg-[#F5F4F0]">操作</th></tr>`;
+            thHtml += `<th class="px-3 py-3 text-center font-bold text-[var(--wafu-accent)] bg-[#F5F4F0] align-bottom pb-4">操作</th></tr>`;
             thead.innerHTML = thHtml;
             
             tbody.innerHTML = '';
@@ -948,6 +867,23 @@
                 tr.innerHTML = tdHtml;
                 tbody.appendChild(tr);
             });
+        };
+
+        // 新增：移動欄位順序邏輯
+        window.moveAssessmentColumn = (key, direction) => {
+            const index = editingAssessmentKeys.indexOf(key);
+            if (index === -1) return;
+            const newIndex = index + direction;
+            
+            // 防止移動到「密碼」或基本屬性之前 (保留最前面的位置給密碼/座號/姓名)
+            if (newIndex <= 0 || newIndex >= editingAssessmentKeys.length) return;
+            
+            // 陣列項目對調
+            const temp = editingAssessmentKeys[index];
+            editingAssessmentKeys[index] = editingAssessmentKeys[newIndex];
+            editingAssessmentKeys[newIndex] = temp;
+            
+            window.renderAssessmentEditor(); // 重新渲染表格
         };
 
         window.deleteAssessmentColumn = (colKey) => {
@@ -975,10 +911,11 @@
                 let docData = snap.exists() ? snap.data() : {};
                 
                 docData.records = editingAssessmentData;
+                docData.customOrder = editingAssessmentKeys; // 儲存使用者自訂的陣列順序
                 docData.updatedAt = Date.now(); 
                 
                 await setDoc(assessmentRef(name), docData);
-                showToast('評量成績明細已成功更新！', 'success');
+                showToast('評量成績明細與順序已成功更新！', 'success');
                 window.closeEditAssessmentModal();
             } catch (error) {
                 showToast('儲存失敗', 'error');
