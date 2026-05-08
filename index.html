@@ -521,31 +521,29 @@
         let currentStats = null; 
 
         // ==========================================
-        // 3. 處理下拉選單 (增強權限識別顯示)
+        // 1. 初始化 Firebase
         // ==========================================
-        async function loadAssessmentsToDropdown(...selectIds) {
-            const snapshot = await getDocs(assessmentsCol());
-            let assessments = [];
-            snapshot.forEach(doc => {
-                const data = doc.data();
-                // 不再過濾，讓教師看得到全部，但在介面與後端進行阻擋
-                assessments.push({ 
-                    id: doc.id, 
-                    updatedAt: data.updatedAt || 0,
-                    ownerName: data.ownerName || '超級管理員',
-                    ownerId: data.ownerId || 'admin'
-                });
-            });
-            assessments.sort((a, b) => b.updatedAt - a.updatedAt);
-            
-            selectIds.forEach(selectId => {
-                const select = document.getElementById(selectId);
-                if (!select) return;
+        async function initSystem() {
+            try {
+                               const myConfig = {
+                 apiKey: "AIzaSyCOv3fRkben0ycq6hQJulwMhkbON8fxLxI",
+  authDomain: "grades-2421f.firebaseapp.com",
+  projectId: "grades-2421f",
+  storageBucket: "grades-2421f.firebasestorage.app",
+  messagingSenderId: "952321148582",
+  appId: "1:952321148582:web:f932a627c0bd24a440d667"
+
+                };
+                // 🔼🔼🔼 請把上方引號內的文字，換成您 Firebase 的金鑰 🔼🔼🔼
+
+                let activeConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : myConfig;
+                appId = typeof __app_id !== 'undefined' ? __app_id : 'my-school-grades';
                 
-                if (selectId === 'importSheetSelect') {
-                    select.innerHTML = '<option value="" disabled selected>請選擇現有評量，或選擇下方新增...</option><option value="NEW_SHEET" class="font-bold text-[var(--wafu-primary)]">+ 新增評量名稱</option>';
-                } else {
-                    select.innerHTML = '<option value="" disabled selected>請選擇...</option>';
+                const app = initializeApp(activeConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                onAuthStateChanged(auth, async (user) => {
                 }
 
                 assessments.forEach(item => {
