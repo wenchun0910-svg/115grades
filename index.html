@@ -521,170 +521,20 @@
         let currentStats = null; 
 
         // ==========================================
-        // 1. 初始化 Firebase
-        // ==========================================
-        async function initSystem() {
-            try {
-                const myConfig = {
-                 apiKey: "AIzaSyCOv3fRkben0ycq6hQJulwMhkbON8fxLxI",
-  authDomain: "grades-2421f.firebaseapp.com",
-  projectId: "grades-2421f",
-  storageBucket: "grades-2421f.firebasestorage.app",
-  messagingSenderId: "952321148582",
-  appId: "1:952321148582:web:f932a627c0bd24a440d667"
-
-                };
-
-                let activeConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : myConfig;
-                appId = typeof __app_id !== 'undefined' ? __app_id : 'my-school-grades';
-                
-                const app = initializeApp(activeConfig);
-                auth = getAuth(app);
-                db = getFirestore(app);
-
-                onAuthStateChanged(auth, async (user) => {
-                    if (user) {
-                        isFirebaseReady = true;
-                        document.getElementById('subtitle').textContent = '請輸入密碼以登入系統';
-                        document.getElementById('loginForm').classList.remove('hidden');
-                        await ensureSystemDocs();
-                    }
-                });
-
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-            } catch (error) {
-                console.error("Firebase 初始化失敗:", error);
-                document.getElementById('subtitle').innerHTML = `<span class="text-[var(--wafu-accent)] font-bold">資料庫連線失敗，請檢查金鑰設定。</span>`;
-            }
-        }
-
-        const configRef = () => doc(db, 'artifacts', appId, 'public', 'data', 'system', 'config');
-        const rosterRef = () => doc(db, 'artifacts', appId, 'public', 'data', 'system', 'roster');
-        const teachersRef = () => doc(db, 'artifacts', appId, 'public', 'data', 'system', 'teachers');
-        const assessmentsCol = () => collection(db, 'artifacts', appId, 'public', 'data', 'assessments');
-        const assessmentRef = (name) => doc(db, 'artifacts', appId, 'public', 'data', 'assessments', name);
-
-        async function ensureSystemDocs() {
-            try {
-                const cSnap = await getDoc(configRef());
-                if (!cSnap.exists()) await setDoc(configRef(), { adminPassword: 'admin' });
-                const rSnap = await getDoc(rosterRef());
-                if (!rSnap.exists()) await setDoc(rosterRef(), { students: [] });
-                const tSnap = await getDoc(teachersRef());
-                if (!tSnap.exists()) await setDoc(teachersRef(), { teachers: [] });
-            } catch (e) {
-                console.error("Error verifying docs", e);
-            }
-        }
-
-        // ==========================================
-        // 2. 登入邏輯 (分層權限驗證)
-        // ==========================================
-        document.getElementById('loginForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            if(!isFirebaseReady) return showToast('系統連線中，請稍後', 'warning');
-            
-            const pwd = document.getElementById('password').value.trim();
-            if (!pwd) return showToast('請輸入密碼', 'warning');
-
-            toggleBtn('loginBtn', 'loginBtnText', 'loginSpinner', true, '驗證中...');
-
-            try {
-                // 1. 檢查是否為超級管理員
-                const configSnap = await getDoc(configRef());
-                const adminPwd = configSnap.exists() ? configSnap.data().adminPassword : 'admin';
-
-                if (pwd === adminPwd) {
-                    currentRole = 'superadmin';
-                    currentUserInfo = { id: 'admin', name: '超級管理員', pwd: pwd };
-                    setupAdminUI('超級管理員', '總管理後台');
-                    
-                    // 顯示所有超級管理員專屬區塊
-                    document.querySelectorAll('.superadmin-only').forEach(el => el.classList.remove('hidden'));
-                    
-                    await loadAssessmentsToDropdown('manageAssessmentSelect', 'importSheetSelect');
-                    await window.loadAdminRoster(); 
-                    await window.loadAdminTeachers();
-                    showToast('超級管理員登入成功', 'success');
-                    return;
-                }
-
-                // 2. 檢查是否為一般教師
-                const tSnap = await getDoc(teachersRef());
-                const teachers = tSnap.exists() ? tSnap.data().teachers || [] : [];
-                const teacherInfo = teachers.find(t => t.password === pwd);
-
-                if (teacherInfo) {
-                    currentRole = 'teacher';
-                    currentUserInfo = { id: teacherInfo.id, name: teacherInfo.name, pwd: pwd };
-                    setupAdminUI('一般教師', `${teacherInfo.name} 的管理後台`);
-                    
-                    // 隱藏超級管理員專屬區塊 (名冊管理、教師管理等)
-                    document.querySelectorAll('.superadmin-only').forEach(el => el.classList.add('hidden'));
-
-                    await loadAssessmentsToDropdown('manageAssessmentSelect', 'importSheetSelect');
-                    showToast('教師登入成功', 'success');
-                    return;
-                }
-
-                // 3. 檢查是否為學生
-                const rosterSnap = await getDoc(rosterRef());
-                const students = rosterSnap.exists() ? rosterSnap.data().students : [];
-                const studentInfo = students.find(s => s['密碼'] === pwd || s.password === pwd);
-
-                if (studentInfo) {
-                    currentRole = 'student';
-                    currentUserInfo = { pwd, ...studentInfo };
-                    document.getElementById('loginForm').classList.add('hidden');
-                    document.getElementById('subtitle').textContent = '請選擇要查詢的評量項目';
-                    document.getElementById('resSeat').textContent = `座號：${studentInfo['座號'] || studentInfo.seat || '--'}`;
-                    document.getElementById('resName').textContent = studentInfo['姓名'] || studentInfo.name || '--';
-                    
-                    await loadAssessmentsToDropdown('assessment');
-                    document.getElementById('studentSection').classList.remove('hidden');
-                    showToast('登入成功', 'success');
-                } else {
-                    showToast('密碼錯誤或找不到使用者', 'error');
-                }
-            } catch (error) {
-                console.error(error);
-                showToast('系統發生錯誤', 'error');
-            } finally {
-                toggleBtn('loginBtn', 'loginBtnText', 'loginSpinner', false, '登 入');
-            }
-        });
-
-        function setupAdminUI(roleLabel, nameLabel) {
-            document.getElementById('loginForm').classList.add('hidden');
-            document.getElementById('subtitle').textContent = '系統管理後台';
-            document.getElementById('adminSection').classList.remove('hidden');
-            document.getElementById('adminRoleLabel').textContent = roleLabel;
-            document.getElementById('adminNameLabel').textContent = nameLabel;
-            toggleBtn('loginBtn', 'loginBtnText', 'loginSpinner', false, '登 入');
-        }
-
-        // ==========================================
-        // 3. 處理下拉選單 (根據身分過濾)
+        // 3. 處理下拉選單 (增強權限識別顯示)
         // ==========================================
         async function loadAssessmentsToDropdown(...selectIds) {
             const snapshot = await getDocs(assessmentsCol());
             let assessments = [];
             snapshot.forEach(doc => {
                 const data = doc.data();
-                const ownerId = data.ownerId || 'admin';
-                
-                // 權限過濾：超級管理員看全部、學生看全部、教師只能看自己的
-                if (currentRole === 'superadmin' || currentRole === 'student' || ownerId === currentUserInfo.id) {
-                    assessments.push({ 
-                        id: doc.id, 
-                        updatedAt: data.updatedAt || 0,
-                        ownerName: data.ownerName || '系統'
-                    });
-                }
+                // 不再過濾，讓教師看得到全部，但在介面與後端進行阻擋
+                assessments.push({ 
+                    id: doc.id, 
+                    updatedAt: data.updatedAt || 0,
+                    ownerName: data.ownerName || '超級管理員',
+                    ownerId: data.ownerId || 'admin'
+                });
             });
             assessments.sort((a, b) => b.updatedAt - a.updatedAt);
             
@@ -701,10 +551,18 @@
                 assessments.forEach(item => {
                     const option = document.createElement('option');
                     option.value = item.id;
-                    // 超級管理員可以看到是誰上傳的，方便管理
+                    
                     if (currentRole === 'superadmin' && selectId !== 'assessment') {
                         option.textContent = `${item.id} (建立者: ${item.ownerName})`;
+                    } else if (currentRole === 'teacher' && selectId !== 'assessment') {
+                        // 視覺化提示：加上鎖頭讓教師知道這不是他上傳的
+                        if (item.ownerId === currentUserInfo.id) {
+                            option.textContent = `${item.id} (您上傳的)`;
+                        } else {
+                            option.textContent = `${item.id} 🔒 (由 ${item.ownerName} 上傳)`;
+                        }
                     } else {
+                        // 學生查詢介面，只顯示單純名稱
                         option.textContent = item.id;
                     }
                     select.appendChild(option);
@@ -877,12 +735,12 @@
             
             toggleBtn('importBtn', 'importBtnText', 'importSpinner', true, '處理中...');
             try {
-                // 權限檢查：如果評量已存在，且不是自己建立的，一般教師不可覆寫
+                // 嚴格權限檢查：如果評量已存在，且不是自己建立的，一般教師不可覆寫
                 const existingSnap = await getDoc(assessmentRef(name));
                 if (existingSnap.exists()) {
                     const existingOwner = existingSnap.data().ownerId || 'admin';
                     if (currentRole !== 'superadmin' && existingOwner !== currentUserInfo.id) {
-                        throw new Error(`無權限覆寫此評量 (由 ${existingSnap.data().ownerName || '其他使用者'} 建立)`);
+                        throw new Error(`權限不足：此評量由「${existingSnap.data().ownerName || '其他使用者'}」上傳，您無法覆寫！`);
                     }
                 }
 
@@ -924,6 +782,20 @@
         window.handleDeleteAssessment = async () => {
             const name = document.getElementById('manageAssessmentSelect').value;
             if (!name) return showToast('請選擇評量', 'warning');
+            
+            // 嚴格權限檢查
+            try {
+                const snap = await getDoc(assessmentRef(name));
+                if (snap.exists()) {
+                    const owner = snap.data().ownerId || 'admin';
+                    if (currentRole !== 'superadmin' && owner !== currentUserInfo.id) {
+                        return showToast('權限不足：您只能刪除自己上傳的成績！', 'error');
+                    }
+                }
+            } catch(e) {
+                return showToast('驗證失敗', 'error');
+            }
+
             if (!confirm(`確定要永久刪除 [${name}] 嗎？`)) return;
 
             toggleBtn('deleteBtn', 'deleteBtnText', 'deleteSpinner', true, '刪除中...');
@@ -939,9 +811,22 @@
             }
         };
 
-        window.openRenameAssessmentModal = () => {
+        window.openRenameAssessmentModal = async () => {
             const oldName = document.getElementById('manageAssessmentSelect').value;
             if (!oldName) return showToast('請先選擇要修改的評量', 'warning');
+            
+            // 嚴格權限檢查
+            try {
+                const snap = await getDoc(assessmentRef(oldName));
+                if (snap.exists()) {
+                    const owner = snap.data().ownerId || 'admin';
+                    if (currentRole !== 'superadmin' && owner !== currentUserInfo.id) {
+                        return showToast('權限不足：您只能修改自己上傳的成績名稱！', 'error');
+                    }
+                }
+            } catch(e) {
+                return showToast('驗證失敗', 'error');
+            }
             
             document.getElementById('renameOldName').value = oldName;
             document.getElementById('renameNewName').value = oldName;
@@ -1001,6 +886,12 @@
             try {
                 const snap = await getDoc(assessmentRef(name));
                 if (!snap.exists()) throw new Error('資料不存在');
+                
+                // 嚴格權限檢查
+                const owner = snap.data().ownerId || 'admin';
+                if(currentRole !== 'superadmin' && owner !== currentUserInfo.id) {
+                    throw new Error('權限不足：您只能編輯自己上傳的成績明細！');
+                }
                 
                 const docData = snap.data();
                 editingAssessmentData = JSON.parse(JSON.stringify(docData.records || []));
