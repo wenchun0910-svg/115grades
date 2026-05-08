@@ -525,9 +525,9 @@
         // ==========================================
         async function initSystem() {
             try {
-              
+                
                 const myConfig = {
-                    apiKey: "AIzaSyCOv3fRkben0ycq6hQJulwMhkbON8fxLxI",
+                     apiKey: "AIzaSyCOv3fRkben0ycq6hQJulwMhkbON8fxLxI",
   authDomain: "grades-2421f.firebaseapp.com",
   projectId: "grades-2421f",
   storageBucket: "grades-2421f.firebasestorage.app",
@@ -535,7 +535,7 @@
   appId: "1:952321148582:web:f932a627c0bd24a440d667"
 
                 };
-              
+            
 
                 let activeConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : myConfig;
                 appId = typeof __app_id !== 'undefined' ? __app_id : 'my-school-grades';
@@ -1127,7 +1127,17 @@
                 let tdHtml = '';
                 editingAssessmentKeys.forEach(key => {
                      let cellVal = row[key] !== undefined ? row[key] : '';
-                     tdHtml += `<td class="px-3 py-3 text-center text-gray-800 whitespace-nowrap border-r border-[var(--wafu-border)]">${cellVal}</td>`;
+                     
+                     // 判斷是否為基本資料，如果是基本資料則不可編輯 (唯讀)，如果是各科成績則轉為輸入框
+                     if (key !== '密碼' && key !== '姓名' && key !== '座號' && key !== '總分' && key !== '平均') {
+                         tdHtml += `<td class="p-1 text-center whitespace-nowrap border-r border-[var(--wafu-border)]">
+                                      <input type="text" value="${cellVal}" 
+                                             onchange="window.updateAssessmentScore(${rowIndex}, '${key}', this.value)"
+                                             class="w-full min-w-[60px] text-center bg-transparent hover:bg-white focus:bg-white border border-transparent focus:border-[var(--wafu-primary)] rounded py-2 px-1 transition-all outline-none">
+                                    </td>`;
+                     } else {
+                         tdHtml += `<td class="px-3 py-3 text-center text-gray-500 whitespace-nowrap border-r border-[var(--wafu-border)] bg-gray-50 cursor-not-allowed">${cellVal}</td>`;
+                     }
                 });
                 tdHtml += `<td class="px-3 py-3 text-center whitespace-nowrap">
                              <button onclick="window.deleteAssessmentRow(${rowIndex})" class="text-[var(--wafu-accent)] hover:opacity-70 px-2 py-1 rounded border border-[var(--wafu-accent)] text-xs transition-colors" title="刪除此學生紀錄"><i class="fas fa-trash-alt mr-1"></i>刪除列</button>
@@ -1135,6 +1145,16 @@
                 tr.innerHTML = tdHtml;
                 tbody.appendChild(tr);
             });
+        };
+
+        // 新增：即時更新單一儲存格成績的功能
+        window.updateAssessmentScore = (rowIndex, key, value) => {
+            let parsedVal = value.trim();
+            // 自動判斷是否為數字，是數字就轉型，不是就保留字串(例如：輸入"缺考")
+            if (parsedVal !== '' && !isNaN(parsedVal)) {
+                parsedVal = Number(parsedVal);
+            }
+            editingAssessmentData[rowIndex][key] = parsedVal;
         };
 
         window.moveAssessmentColumn = (key, direction) => {
@@ -1569,4 +1589,3 @@
     </script>
 </body>
 </html>
-   
