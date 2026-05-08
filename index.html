@@ -525,8 +525,9 @@
         // ==========================================
         async function initSystem() {
             try {
-                               const myConfig = {
-                 apiKey: "AIzaSyCOv3fRkben0ycq6hQJulwMhkbON8fxLxI",
+              
+                const myConfig = {
+                    apiKey: "AIzaSyCOv3fRkben0ycq6hQJulwMhkbON8fxLxI",
   authDomain: "grades-2421f.firebaseapp.com",
   projectId: "grades-2421f",
   storageBucket: "grades-2421f.firebasestorage.app",
@@ -534,7 +535,7 @@
   appId: "1:952321148582:web:f932a627c0bd24a440d667"
 
                 };
-                // 🔼🔼🔼 請把上方引號內的文字，換成您 Firebase 的金鑰 🔼🔼🔼
+              
 
                 let activeConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : myConfig;
                 appId = typeof __app_id !== 'undefined' ? __app_id : 'my-school-grades';
@@ -544,6 +545,162 @@
                 db = getFirestore(app);
 
                 onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        isFirebaseReady = true;
+                        document.getElementById('subtitle').textContent = '請輸入密碼以登入系統';
+                        document.getElementById('loginForm').classList.remove('hidden');
+                        await ensureSystemDocs();
+                    }
+                });
+
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Firebase 初始化失敗:", error);
+                let errorMsg = error.message || "未知錯誤";
+                document.getElementById('subtitle').innerHTML = `
+                    <span class="text-red-500 font-bold block mb-2 text-sm sm:text-base">資料庫連線失敗：${errorMsg}</span>
+                    <div class="text-xs text-gray-500 text-left bg-white p-4 rounded border border-red-200 inline-block">
+                        【修復清單檢查】<br>
+                        1. 是否已在 Firebase Console 中啟用「Authentication > 匿名登入 (Anonymous)」？<br>
+                        2. firebaseConfig 金鑰是否填寫正確？<br>
+                        3. 請確認沒有複製到 "const firebaseConfig =" 這段字！
+                    </div>
+                `;
+            }
+        }
+
+        const configRef = () => doc(db, 'artifacts', appId, 'public', 'data', 'system', 'config');
+        const rosterRef = () => doc(db, 'artifacts', appId, 'public', 'data', 'system', 'roster');
+        const teachersRef = () => doc(db, 'artifacts', appId, 'public', 'data', 'system', 'teachers');
+        const assessmentsCol = () => collection(db, 'artifacts', appId, 'public', 'data', 'assessments');
+        const assessmentRef = (name) => doc(db, 'artifacts', appId, 'public', 'data', 'assessments', name);
+
+        async function ensureSystemDocs() {
+            try {
+                const cSnap = await getDoc(configRef());
+                if (!cSnap.exists()) await setDoc(configRef(), { adminPassword: 'admin' });
+                const rSnap = await getDoc(rosterRef());
+                if (!rSnap.exists()) await setDoc(rosterRef(), { students: [] });
+                const tSnap = await getDoc(teachersRef());
+                if (!tSnap.exists()) await setDoc(teachersRef(), { teachers: [] });
+            } catch (e) {
+                console.error("Error verifying docs", e);
+            }
+        }
+
+        // ==========================================
+        // 2. 登入邏輯 (分層權限驗證)
+        // ==========================================
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if(!isFirebaseReady) return showToast('系統連線中，請稍後', 'warning');
+            
+            const pwd = document.getElementById('password').value.trim();
+            if (!pwd) return showToast('請輸入密碼', 'warning');
+
+            toggleBtn('loginBtn', 'loginBtnText', 'loginSpinner', true, '驗證中...');
+
+            try {
+                // 1. 檢查是否為超級管理員
+                const configSnap = await getDoc(configRef());
+                const adminPwd = configSnap.exists() ? configSnap.data().adminPassword : 'admin';
+
+                if (pwd === adminPwd) {
+                    currentRole = 'superadmin';
+                    currentUserInfo = { id: 'admin', name: '超級管理員', pwd: pwd };
+                    setupAdminUI('超級管理員', '總管理後台');
+                    
+                    document.querySelectorAll('.superadmin-only').forEach(el => el.classList.remove('hidden'));
+                    
+                    await loadAssessmentsToDropdown('manageAssessmentSelect', 'importSheetSelect');
+                    await window.loadAdminRoster(); 
+                    await window.loadAdminTeachers();
+                    showToast('超級管理員登入成功', 'success');
+                    return;
+                }
+
+                // 2. 檢查是否為一般教師
+                const tSnap = await getDoc(teachersRef());
+                const teachers = tSnap.exists() ? tSnap.data().teachers || [] : [];
+                const teacherInfo = teachers.find(t => t.password === pwd);
+
+                if (teacherInfo) {
+                    currentRole = 'teacher';
+                    currentUserInfo = { id: teacherInfo.id, name: teacherInfo.name, pwd: pwd };
+                    setupAdminUI('一般教師', `${teacherInfo.name} 的管理後台`);
+                    
+                    document.querySelectorAll('.superadmin-only').forEach(el => el.classList.add('hidden'));
+
+                    await loadAssessmentsToDropdown('manageAssessmentSelect', 'importSheetSelect');
+                    showToast('教師登入成功', 'success');
+                    return;
+                }
+
+                // 3. 檢查是否為學生
+                const rosterSnap = await getDoc(rosterRef());
+                const students = rosterSnap.exists() ? rosterSnap.data().students : [];
+                const studentInfo = students.find(s => s['密碼'] === pwd || s.password === pwd);
+
+                if (studentInfo) {
+                    currentRole = 'student';
+                    currentUserInfo = { pwd, ...studentInfo };
+                    document.getElementById('loginForm').classList.add('hidden');
+                    document.getElementById('subtitle').textContent = '請選擇要查詢的評量項目';
+                    document.getElementById('resSeat').textContent = `座號：${studentInfo['座號'] || studentInfo.seat || '--'}`;
+                    document.getElementById('resName').textContent = studentInfo['姓名'] || studentInfo.name || '--';
+                    
+                    await loadAssessmentsToDropdown('assessment');
+                    document.getElementById('studentSection').classList.remove('hidden');
+                    showToast('登入成功', 'success');
+                } else {
+                    showToast('密碼錯誤或找不到使用者', 'error');
+                }
+            } catch (error) {
+                console.error(error);
+                showToast('系統發生錯誤', 'error');
+            } finally {
+                toggleBtn('loginBtn', 'loginBtnText', 'loginSpinner', false, '登 入');
+            }
+        });
+
+        function setupAdminUI(roleLabel, nameLabel) {
+            document.getElementById('loginForm').classList.add('hidden');
+            document.getElementById('subtitle').textContent = '系統管理後台';
+            document.getElementById('adminSection').classList.remove('hidden');
+            document.getElementById('adminRoleLabel').textContent = roleLabel;
+            document.getElementById('adminNameLabel').textContent = nameLabel;
+            toggleBtn('loginBtn', 'loginBtnText', 'loginSpinner', false, '登 入');
+        }
+
+        // ==========================================
+        // 3. 處理下拉選單 (增強權限識別顯示)
+        // ==========================================
+        async function loadAssessmentsToDropdown(...selectIds) {
+            const snapshot = await getDocs(assessmentsCol());
+            let assessments = [];
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                assessments.push({ 
+                    id: doc.id, 
+                    updatedAt: data.updatedAt || 0,
+                    ownerName: data.ownerName || '超級管理員',
+                    ownerId: data.ownerId || 'admin'
+                });
+            });
+            assessments.sort((a, b) => b.updatedAt - a.updatedAt);
+            
+            selectIds.forEach(selectId => {
+                const select = document.getElementById(selectId);
+                if (!select) return;
+                
+                if (selectId === 'importSheetSelect') {
+                    select.innerHTML = '<option value="" disabled selected>請選擇現有評量，或選擇下方新增...</option><option value="NEW_SHEET" class="font-bold text-[var(--wafu-primary)]">+ 新增評量名稱</option>';
+                } else {
+                    select.innerHTML = '<option value="" disabled selected>請選擇...</option>';
                 }
 
                 assessments.forEach(item => {
@@ -553,14 +710,12 @@
                     if (currentRole === 'superadmin' && selectId !== 'assessment') {
                         option.textContent = `${item.id} (建立者: ${item.ownerName})`;
                     } else if (currentRole === 'teacher' && selectId !== 'assessment') {
-                        // 視覺化提示：加上鎖頭讓教師知道這不是他上傳的
                         if (item.ownerId === currentUserInfo.id) {
                             option.textContent = `${item.id} (您上傳的)`;
                         } else {
                             option.textContent = `${item.id} 🔒 (由 ${item.ownerName} 上傳)`;
                         }
                     } else {
-                        // 學生查詢介面，只顯示單純名稱
                         option.textContent = item.id;
                     }
                     select.appendChild(option);
@@ -656,6 +811,7 @@
                 subjects = subjects.concat(missing);
             } else {
                 subjects = Object.keys(grades).filter(s => !['密碼','座號','姓名','總分','平均'].includes(s));
+                // 數字大的排上面 (遞減排序)
                 subjects.sort((a, b) => {
                     const matchA = a.match(/\d+/);
                     const matchB = b.match(/\d+/);
@@ -733,7 +889,6 @@
             
             toggleBtn('importBtn', 'importBtnText', 'importSpinner', true, '處理中...');
             try {
-                // 嚴格權限檢查：如果評量已存在，且不是自己建立的，一般教師不可覆寫
                 const existingSnap = await getDoc(assessmentRef(name));
                 if (existingSnap.exists()) {
                     const existingOwner = existingSnap.data().ownerId || 'admin';
@@ -762,7 +917,7 @@
                     updatedAt: Date.now(),
                     ownerId: currentUserInfo.id,
                     ownerName: currentUserInfo.name
-                }, { merge: true }); // 保留原有的 customOrder
+                }, { merge: true }); 
 
                 showToast(`成績 [${name}] 匯入成功！`, 'success');
                 fileInput.value = '';
@@ -781,7 +936,6 @@
             const name = document.getElementById('manageAssessmentSelect').value;
             if (!name) return showToast('請選擇評量', 'warning');
             
-            // 嚴格權限檢查
             try {
                 const snap = await getDoc(assessmentRef(name));
                 if (snap.exists()) {
@@ -813,7 +967,6 @@
             const oldName = document.getElementById('manageAssessmentSelect').value;
             if (!oldName) return showToast('請先選擇要修改的評量', 'warning');
             
-            // 嚴格權限檢查
             try {
                 const snap = await getDoc(assessmentRef(oldName));
                 if (snap.exists()) {
@@ -885,7 +1038,6 @@
                 const snap = await getDoc(assessmentRef(name));
                 if (!snap.exists()) throw new Error('資料不存在');
                 
-                // 嚴格權限檢查
                 const owner = snap.data().ownerId || 'admin';
                 if(currentRole !== 'superadmin' && owner !== currentUserInfo.id) {
                     throw new Error('權限不足：您只能編輯自己上傳的成績明細！');
@@ -1411,6 +1563,12 @@
             toastTimeout = setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 3500);
         };
 
+        // 啟動系統
+        initSystem();
+
+    </script>
+</body>
+</html>
         // 啟動系統
         initSystem();
 
